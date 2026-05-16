@@ -1,0 +1,316 @@
+# ════════════════════════════════════════════════════════════════
+# น้องซีที — Rules for Rule-Augmented Reasoning (RAR)
+# อ้างอิงจากข้อบังคับมหาวิทยาลัยนเรศวร ว่าด้วยการศึกษาระดับปริญญาตรี พ.ศ. 2565
+# และคู่มือนิสิตระดับปริญญาตรี ปีการศึกษา 2568
+# ════════════════════════════════════════════════════════════════
+
+# ─── หน่วยกิตที่ลงทะเบียนได้ ─────────────────────────────
+registration_credits:
+  undergraduate:
+    normal_semester_max: 22       # หน่วยกิตสูงสุดต่อภาคปกติ (ระดับปริญญาตรี)
+    summer_max: 9                 # หน่วยกิตสูงสุดต่อภาคฤดูร้อน
+  graduate:
+    normal_semester_max: 15
+    summer_max: 6
+
+# ─── ค่าปรับและค่าธรรมเนียม ──────────────────────────────
+penalties:
+  late_registration_per_day: 25       # บาท/วัน ค่าปรับลงทะเบียนล่าช้า
+  late_registration_max_days: 14      # วัน หลังจากนี้พ้นสภาพ
+  late_drop_form_fee: 10              # บาท/ครั้ง ค่าถอนรายวิชา
+  reinstatement_fee:
+    undergraduate: 1000                # บาท ค่าคืนสภาพนิสิต ป.ตรี
+    graduate: 2000                     # บาท ค่าคืนสภาพนิสิต บัณฑิตศึกษา
+  late_per_week:
+    undergraduate: 100                 # บาท/สัปดาห์
+    graduate: 200                      # บาท/สัปดาห์
+  graduation_late_per_day: 50          # บาท/วันทำการ ยื่นจบล่าช้า
+  course_transfer_fee: 100             # บาท/ครั้ง ค่าเทียบโอนรายวิชา
+
+# ─── ค่าธรรมเนียมขึ้นทะเบียนปริญญาบัตร ────────────────────
+graduation_fees:
+  undergraduate: 2000                  # บาท
+  graduate: 2500                       # บาท
+
+# ─── เกณฑ์เกียรตินิยม ────────────────────────────────────
+honors:
+  first_class:
+    name: "เกียรตินิยมอันดับหนึ่ง"
+    min_gpa: 3.50
+    requirements:
+      - "ไม่เคยได้รับระดับขั้น F หรืออักษร U"
+      - "ไม่เคยลงทะเบียนเรียนซ้ำในรายวิชาใดๆ"
+      - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมตลอดหลักสูตร"
+  second_class:
+    name: "เกียรตินิยมอันดับสอง"
+    min_gpa: 3.25
+    max_gpa: 3.49
+    requirements:
+      - "ไม่เคยได้รับระดับขั้น F หรืออักษร U"
+      - "ไม่เคยลงทะเบียนเรียนซ้ำในรายวิชาใดๆ"
+      - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมตลอดหลักสูตร"
+
+# ─── สถานภาพนิสิตและการพ้นสภาพ ───────────────────────────
+academic_status:
+  pass_min_gpa: 2.00              # GPA ขั้นต่ำที่ถือว่าปกติ
+  probation_threshold: 2.00       # ต่ำกว่านี้ = รอพินิจ
+  dismissal:
+    after_2_semesters: 1.50       # หลัง 2 ภาค GPA < 1.50 = พ้นสภาพ
+    after_4_semesters: 1.75       # หลัง 4 ภาคขึ้นไป GPA < 1.75 = พ้นสภาพ
+
+# ─── ระยะเวลาการสำเร็จการศึกษา (ภาคการศึกษา) ──────────────
+graduation_duration:
+  bachelor_4year:
+    min_semesters_fulltime: 6
+    max_semesters_fulltime: 8     # 4 ปี = 8 ภาคปกติ
+    min_semesters_parttime: 14
+  bachelor_5year:
+    min_semesters_fulltime: 8
+    max_semesters_fulltime: 10
+    min_semesters_parttime: 17
+  bachelor_6year:
+    min_semesters_fulltime: 10
+    max_semesters_fulltime: 12
+    min_semesters_parttime: 20
+  bachelor_continued:
+    min_semesters_fulltime: 4
+    min_semesters_parttime: 8
+  second_degree:
+    min_semesters_fulltime: 2
+    min_semesters_parttime: 3
+
+# ─── ระบบระดับขั้นและค่าคะแนน ────────────────────────────
+grade_points:
+  A: 4.00
+  "B+": 3.50
+  B: 3.00
+  "C+": 2.50
+  C: 2.00
+  "D+": 1.50
+  D: 1.00
+  F: 0.00
+
+grade_meanings:
+  A: "ดีเยี่ยม (Excellent)"
+  "B+": "ดีมาก (Very Good)"
+  B: "ดี (Good)"
+  "C+": "ดีพอใช้ (Fairly Good)"
+  C: "พอใช้ (Fair)"
+  "D+": "อ่อน (Poor)"
+  D: "อ่อนมาก (Very Poor)"
+  F: "ตก (Failed)"
+  S: "เป็นที่พอใจ (Satisfactory)"
+  U: "ไม่เป็นที่พอใจ (Unsatisfactory)"
+  I: "การวัดผลยังไม่สมบูรณ์ (Incomplete)"
+  P: "การเรียนการสอนยังไม่สิ้นสุด (In Progress)"
+  W: "การถอนรายวิชา (Withdrawn)"
+
+# ─── เกณฑ์รางวัลเรียนดี ──────────────────────────────────
+academic_awards:
+  yearly:
+    min_credits: 32              # ลง ≥32 หน่วยกิตใน 2 ภาคปกติ
+    min_gpa: 3.75
+    must_not_have_grades:
+      - F
+      - U
+    excluded: "นิสิตปีสุดท้ายของหลักสูตรไม่อยู่ในข่ายของสิทธิ์"
+  gold_medal:
+    requirement: "เกียรตินิยมอันดับหนึ่ง + GPA ตลอดหลักสูตร ≥ 3.75"
+
+# ─── เกณฑ์ความรู้ภาษาอังกฤษ (CEPT) ────────────────────────
+english_requirement:
+  thai_program:
+    level: "A2"
+    min_score: 27
+    description: "นิสิตหลักสูตรไทยที่ไม่ใช่นานาชาติ"
+  international_program:
+    level: "B1"
+    min_score: 35
+    description: "นิสิตหลักสูตรนานาชาติ"
+  transfer_deadline: "ก่อนสัปดาห์สอบกลางภาค"
+
+# ─── เกณฑ์ความรู้คอมพิวเตอร์ ─────────────────────────────
+computer_requirement:
+  min_percent: 50
+  levels:
+    excellent:
+      range: [84, 100]
+      label: "ดีมาก"
+    good:
+      range: [68, 83]
+      label: "ดี"
+    fair:
+      range: [50, 67]
+      label: "พอใช้"
+    needs_improvement:
+      range: [0, 49]
+      label: "ควรปรับปรุง"
+
+# ─── คำร้องสำคัญ NU Forms ────────────────────────────────
+nu_forms:
+  NU1:
+    name: "ระเบียนประวัตินิสิต"
+    category: "ข้อมูลนิสิตใหม่"
+  NU3:
+    name: "คู่มือลงทะเบียนเรียน"
+    category: "ลงทะเบียน"
+  NU4:
+    name: "แบบขอเปิดรายวิชา/หมู่เรียน (เพิ่ม)"
+    category: "ลงทะเบียน"
+  NU5:
+    name: "แบบขอปิดรายวิชา/หมู่เรียน"
+    category: "ลงทะเบียน"
+  NU6:
+    name: "แบบขอเปลี่ยนแปลงการสอนรายวิชา"
+    category: "ลงทะเบียน"
+    purpose: "ใช้เมื่อต้องการสำรองที่นั่งในรายวิชาที่ไม่ได้สำรองไว้"
+  NU7:
+    name: "คำร้องขอคืนสภาพการเป็นนิสิต"
+    category: "ลงทะเบียน"
+    purpose: "ใช้เมื่อพ้นสภาพและต้องการกลับมาเป็นนิสิต"
+    fee: 1000
+  NU8:
+    name: "คำร้องขอเพิ่มรายวิชาหลังกำหนด"
+    category: "ลงทะเบียน"
+    purpose: "ใช้เพิ่มรายวิชาหลังพ้น 2 สัปดาห์แรก"
+    penalty: "100 บาท/สัปดาห์ (≤5 สัปดาห์หลังหมดกำหนด)"
+  NU9:
+    name: "คำร้องขอยื่นสำเร็จการศึกษาล่าช้ากว่ากำหนด"
+    category: "สำเร็จการศึกษา"
+    penalty: "50 บาท/วันทำการ"
+  NU11:
+    name: "แบบขอถอนรายวิชา (ติด W)"
+    category: "ลงทะเบียน"
+    deadline: "ไม่เกินสัปดาห์ที่ 12 ของภาคเรียน"
+  NU13:
+    name: "คำร้องขอย้ายคณะ/สาขาวิชา"
+    category: "ระเบียนประวัติ"
+    note: "ควรทำก่อนวันลงทะเบียน 4 สัปดาห์"
+  NU14:
+    name: "คำร้องขอเทียบโอนรายวิชา"
+    category: "ลงทะเบียน"
+    fee: 100
+    requirement: "ผลการเรียนเทียบได้ไม่ต่ำกว่าระดับขั้น C"
+  NU15:
+    name: "คำร้องขอใบแสดงผลการเรียน (Transcript)"
+    category: "เอกสารสำคัญ"
+  NU16:
+    name: "คำร้องขอเปลี่ยนชื่อ ชื่อสกุล ยศ"
+    category: "ระเบียนประวัติ"
+  NU17:
+    name: "คำร้องขอลาพักการศึกษา"
+    category: "ระเบียนประวัติ"
+    requirement: "ผู้ปกครองต้องลงนามยินยอม"
+  NU18:
+    name: "คำร้องทั่วไป"
+    category: "ลงทะเบียน"
+    common_use: "ขอลงทะเบียนเรียนมากกว่าเกณฑ์"
+  NU19:
+    name: "คำร้องขอลาออกจากการศึกษา"
+    category: "ระเบียนประวัติ"
+    requirement: "ผู้ปกครองต้องลงนามยินยอม"
+  NU20:
+    name: "ใบแจ้งยอดชำระเงิน"
+    category: "ลงทะเบียน"
+  NU21:
+    name: "คำร้องขอใบรับรอง"
+    category: "เอกสารสำคัญ"
+  NU22:
+    name: "รายงานสถิติจำนวนนิสิตที่ลงทะเบียนเรียน"
+    category: "สารนิเทศ"
+  NU24:
+    name: "ใบมอบฉันทะ"
+    category: "ลงทะเบียน"
+  NU25:
+    name: "แบบขอสำเร็จการศึกษา"
+    category: "สำเร็จการศึกษา"
+    deadline: "ภายใน 4 สัปดาห์หลังเปิดภาคเรียน"
+    fee_undergraduate: 2000
+    fee_graduate: 2500
+  NU26:
+    name: "ปฏิทินการศึกษา"
+    category: "สารนิเทศ"
+  NU32:
+    name: "แบบรายงานผลการเรียนรายวิชา"
+    category: "ประมวลผลข้อมูล"
+  NU33:
+    name: "แบบแก้ไขผลการเรียนรายวิชา"
+    category: "ประมวลผลข้อมูล"
+    purpose: "ใช้แก้อักษร I หรือ P"
+
+# ─── การถอนรายวิชา ───────────────────────────────────────
+course_withdrawal:
+  within_2_weeks: "ไม่ติด W, เสียค่าใช้จ่าย 10 บาท/ครั้ง"
+  after_2_weeks: "ติดอักษร W ในระเบียนผลการเรียน"
+  max_week: 12                    # ไม่เกินสัปดาห์ที่ 12 ของภาคเรียน
+
+# ─── เวลาเรียนขั้นต่ำเพื่อมีสิทธิ์สอบ ─────────────────────
+attendance:
+  min_percent: 80                 # ต้องเข้าเรียน ≥80% ของเวลาเรียน
+  consequence: "ผู้ไม่มีสิทธิ์สอบจะได้รับ F หรือ U"
+
+# ─── กยศ. ─────────────────────────────────────────────────
+student_loan:
+  voluntary_hours_per_year: 36    # ชั่วโมงจิตอาสาต่อปี
+  voluntary_period: "1 พฤษภาคม - 30 เมษายน"
+  basic_elearning_hours: 6        # ชั่วโมง SET e-Learning ภาคบังคับ
+  cost_of_living_transfer_days: 30  # วัน โอนค่าครองชีพหลัง upload สัญญา
+  freshman_first_semester: "ต้องสำรองเงินจ่ายค่าเทอมก่อน"
+
+# ─── รหัสรายวิชา ─────────────────────────────────────────
+course_code_meaning:
+  pattern: "AAA-B-C-D"
+  AAA:
+    description: "รหัสสาขา"
+    examples:
+      "254": "วิทยาการคอมพิวเตอร์ (CS)"
+      "273": "เทคโนโลยีสารสนเทศ (IT)"
+      "001": "วิชาศึกษาทั่วไป"
+      "002": "ไม่นับเป็นวิชาเลือกเสรี"
+  B: "ชั้นปีที่ควรเรียน (หลักร้อย)"
+  C:
+    description: "หมวดวิชา (หลักสิบ)"
+    values:
+      "1": "วิชาทั่วไป"
+      "4": "การคำนวณ"
+      "5": "ข้อมูล"
+      "6": "ระบบ"
+      "7": "ภาษาโปรแกรม"
+      "8": "ประยุกต์"
+      "9": "การศึกษาอิสระ/สัมมนา/วิจัย"
+  D: "ลำดับของรายวิชาในหมวด (หลักหน่วย)"
+
+# ─── หลักสูตรของภาควิชา CSIT ─────────────────────────────
+programs:
+  cs:
+    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาวิทยาการคอมพิวเตอร์"
+    full_name_en: "Bachelor of Science Program in Computer Science"
+    code_prefix: "254"
+    total_credits: 123
+    duration_years: 4
+    structure:
+      general_education: 30
+      specific: 87
+      free_elective: 6
+  it:
+    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาเทคโนโลยีสารสนเทศ"
+    full_name_en: "Bachelor of Science Program in Information Technology"
+    code_prefix: "273"
+    total_credits: 126
+    duration_years: 4
+    structure:
+      general_education: 30
+      specific: 90
+      free_elective: 6
+
+# ─── วิชาเลือกเสรี — เงื่อนไข ────────────────────────────
+free_elective:
+  min_credits: 6
+  excluded_codes:
+    - "001"   # วิชาศึกษาทั่วไป
+    - "002"   # ไม่นับเป็นเลือกเสรี
+
+# ─── Prerequisite Rules ──────────────────────────────────
+prerequisite:
+  min_grade: "D"                  # ต้องได้ ≥ D จึงลงวิชาต่อเนื่องได้
+  violation_result: "ลงทะเบียนผิดเงื่อนไข = โมฆะ, ติดอักษร W"

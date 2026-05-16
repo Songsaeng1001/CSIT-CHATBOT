@@ -1,0 +1,61 @@
+# ─── Python ──────────────────────────────────
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ─── IDE ─────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+
+# ─── Environment Variables ───────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Database & Vector Store ─────────────────
+chroma_db/
+*.db
+*.db-shm
+*.db-wal
+!data/.gitkeep
+
+# ─── Data (ไฟล์ใหญ่ ไม่ commit) ──────────────
+data/raw/*.docx
+data/raw/*.pdf
+data/raw/*.xlsx
+!data/raw/.gitkeep
+
+# ─── Logs ────────────────────────────────────
+logs/*.log
+*.log
+
+# ─── HuggingFace Cache ───────────────────────
+~/.cache/huggingface/
+
+# ─── macOS ───────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ─── n8n ─────────────────────────────────────
+n8n-workflows/credentials.json
+n8n-workflows/*.encrypted
