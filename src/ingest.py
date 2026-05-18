@@ -1,101 +1,153 @@
 """
 สคริปต์สร้าง Vector Database จากเอกสารใน knowledge_base/
-รันครั้งเดียวก่อนเริ่มใช้ chatbot
+
+รันครั้งเดียวก่อนใช้ chatbot:
+    python -m src.ingest
+
+ถ้าอยากสร้างใหม่ทั้งหมด (ลบของเก่า):
+    python -m src.ingest --reset
 """
 
+import sys
 from pathlib import Path
+
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
 
-# ─── ตั้งค่า ─────────────────────────────────────────────
-KNOWLEDGE_DIR = "knowledge_base"
-CHROMA_DIR = "chroma_db"           # โฟลเดอร์เก็บ DB
-COLLECTION_NAME = "csit_knowledge"
+from src.config import KNOWLEDGE_DIR
+from src.database import vector_db
 
-# โมเดล embedding ที่รองรับภาษาไทย
-EMBEDDING_MODEL = "BAAI/bge-m3"     # ดีที่สุดสำหรับไทย
-# ทางเลือก: "intfloat/multilingual-e5-large"
 
-CHUNK_SIZE = 500       # ขนาดแต่ละ chunk (ตัวอักษร)
-CHUNK_OVERLAP = 80     # ซ้อนทับกัน (ป้องกันข้อมูลขาด)
+# ─── ตั้งค่าการ Split ─────────────────────────
+CHUNK_SIZE = 500        # ตัวอักษรต่อ chunk
+CHUNK_OVERLAP = 80      # ส่วนซ้อนทับกัน
+
+# Separators ที่เหมาะกับภาษาไทย
+SEPARATORS = [
+    "\n## ",       # หัวข้อใหญ่
+    "\n### ",      # หัวข้อย่อย
+    "\n\n",        # paragraph
+    "\n",          # บรรทัด
+    "。",          # จุดญี่ปุ่น (เผื่อ)
+    " ",           # ช่องว่าง
+    "",            # ตัวอักษร (fallback)
+]
 
 
 def load_documents():
-    """โหลดไฟล์ .md และ .txt ทั้งหมดในโฟลเดอร์"""
+    """โหลดไฟล์ .md ทั้งหมดใน knowledge_base/"""
+    print("=" * 60)
     print(f"📂 โหลดเอกสารจาก: {KNOWLEDGE_DIR}")
+    print("=" * 60)
+    
+    if not KNOWLEDGE_DIR.exists():
+        print(f"❌ ไม่พบโฟลเดอร์: {KNOWLEDGE_DIR}")
+        sys.exit(1)
     
     loader = DirectoryLoader(
-        KNOWLEDGE_DIR,
-        glob="**/*.md",                     # อ่านทุกไฟล์ .md
+        str(KNOWLEDGE_DIR),
+        glob="**/*.md",
         loader_cls=TextLoader,
-        loader_kwargs={"encoding": "utf-8"} # สำคัญสำหรับภาษาไทย!
+        loader_kwargs={"encoding": "utf-8"},
+        show_progress=True,
     )
+    
     documents = loader.load()
-    print(f"   ✅ โหลดได้ {len(documents)} ไฟล์")
+    
+    if not documents:
+        print("❌ ไม่พบไฟล์ .md ในโฟลเดอร์")
+        sys.exit(1)
+    
+    # แสดงรายการไฟล์
+    print(f"\n✅ โหลดสำเร็จ {len(documents)} ไฟล์:")
+    for doc in documents:
+        filename = Path(doc.metadata["source"]).name
+        chars = len(doc.page_content)
+        print(f"   📄 {filename:30s} {chars:>6,} ตัวอักษร")
+    
     return documents
 
 
 def split_documents(documents):
     """แบ่งเอกสารเป็น chunks เล็กๆ"""
-    print(f"✂️  แบ่งเอกสารเป็น chunks (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})")
+    print()
+    print("=" * 60)
+    print(f"✂️  ตัด chunks (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})")
+    print("=" * 60)
     
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
-        # ลำดับ separator: ลองตัดที่ \n\n ก่อน ถ้าไม่ได้ค่อย \n ค่อยช่องว่าง
-        separators=["\n\n", "\n", "。", " ", ""],
+        separators=SEPARATORS,
         length_function=len,
+        is_separator_regex=False,
     )
+    
     chunks = splitter.split_documents(documents)
-    print(f"   ✅ ได้ทั้งหมด {len(chunks)} chunks")
+    
+    print(f"✅ ได้ทั้งหมด {len(chunks)} chunks")
+    
+    # สถิติขนาด chunk
+    sizes = [len(c.page_content) for c in chunks]
+    avg = sum(sizes) // len(sizes)
+    print(f"   ขนาดเฉลี่ย: {avg} ตัวอักษร")
+    print(f"   เล็กสุด: {min(sizes)} | ใหญ่สุด: {max(sizes)}")
+    
+    # นับ chunks ต่อไฟล์
+    from collections import Counter
+    file_counts = Counter(
+        Path(c.metadata["source"]).name for c in chunks
+    )
+    print("\n   📊 จำนวน chunks ต่อไฟล์:")
+    for filename, count in sorted(file_counts.items()):
+        print(f"      {filename:30s} {count} chunks")
+    
     return chunks
 
 
-def create_vector_store(chunks):
-    """สร้าง embeddings และเก็บลง Chroma"""
-    print(f"🧠 โหลด embedding model: {EMBEDDING_MODEL}")
-    print("   (ครั้งแรกจะดาวน์โหลดประมาณ 2GB ใช้เวลาสักครู่...)")
+def ingest(reset: bool = False):
+    """กระบวนการ ingest หลัก"""
     
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"},          # ถ้ามี GPU เปลี่ยนเป็น "cuda"
-        encode_kwargs={"normalize_embeddings": True},
-    )
+    # ─── Step 0: Reset ถ้าระบุ ───
+    if reset:
+        print("⚠️  Reset mode: ลบ collection เก่าก่อน")
+        vector_db.reset_collection()
+        print()
     
-    print(f"💾 สร้าง Vector Store ที่: {CHROMA_DIR}")
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_DIR,            # บันทึกลง disk
-    )
+    # ─── Step 1: Load ───
+    documents = load_documents()
     
-    print(f"   ✅ บันทึก {len(chunks)} vectors สำเร็จ")
-    return vector_store
+    # ─── Step 2: Split ───
+    chunks = split_documents(documents)
+    
+    # ─── Step 3: Embed + Save ───
+    print()
+    print("=" * 60)
+    print("💾 สร้าง embeddings + บันทึก Chroma")
+    print("=" * 60)
+    
+    added = vector_db.add_documents(chunks)
+    
+    # ─── Step 4: Verify ───
+    total = vector_db.count_documents()
+    
+    print(f"\n✅ เพิ่ม {added} chunks เข้า Chroma")
+    print(f"   รวมทั้งหมดใน collection: {total} chunks")
+    
+    print()
+    print("=" * 60)
+    print("🎉 Ingest สำเร็จ! พร้อมใช้งานแล้ว")
+    print("=" * 60)
+    print()
+    print("ทดสอบต่อด้วย:")
+    print("   python -m tests.test_retrieval")
+    print("   python -m tests.test_rag")
 
 
 def main():
-    print("=" * 60)
-    print("🚀 เริ่มสร้าง Vector Database สำหรับน้องซีที")
-    print("=" * 60)
-    
-    if not Path(KNOWLEDGE_DIR).exists():
-        print(f"❌ ไม่พบโฟลเดอร์ {KNOWLEDGE_DIR}")
-        return
-    
-    docs = load_documents()
-    if not docs:
-        print("❌ ไม่พบเอกสารในโฟลเดอร์")
-        return
-    
-    chunks = split_documents(docs)
-    vector_store = create_vector_store(chunks)
-    
-    print("=" * 60)
-    print("✨ เสร็จสมบูรณ์! พร้อมใช้งานได้แล้ว")
-    print("=" * 60)
+    """Entry point"""
+    reset = "--reset" in sys.argv
+    ingest(reset=reset)
 
 
 if __name__ == "__main__":
