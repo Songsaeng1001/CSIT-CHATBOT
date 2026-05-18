@@ -42,8 +42,7 @@ def get_llm():
         )
     return _llm
 
-
-def build_prompt(question: str, context_chunks: list) -> list:
+    # def build_prompt(question: str, context_chunks: list) -> list:
     """สร้าง prompt จาก context"""
 
     # รวม context จาก chunks
@@ -70,9 +69,12 @@ def build_prompt(question: str, context_chunks: list) -> list:
     ]
 
 
+#
+
+
 def answer(question: str, verbose: bool = False) -> str:
     """
-    ตอบคำถาม 1 ครั้ง — RAG flow
+    ตอบคำถาม 1 ครั้ง — RAR flow (RAG + Rules + SQLite)
 
     Args:
         question: คำถามจากผู้ใช้
@@ -81,19 +83,41 @@ def answer(question: str, verbose: bool = False) -> str:
     Returns:
         คำตอบจาก Gemini
     """
-    # 1. Retrieval
-    results = vector_db.search(question, k=4)
-    chunks = [doc for doc, _ in results]
+    # ── Import retriever ──
+    from src.retriever import retrieve_context
+
+    # 1. Retrieve จากทุก source
+    context = retrieve_context(question, verbose=verbose)
 
     if verbose:
-        print(f"\n📚 พบ context {len(chunks)} เอกสาร:")
-        for i, (doc, score) in enumerate(results, 1):
-            filename = Path(doc.metadata.get("source", "?")).name
-            print(f"   [{i}] {filename} (dist: {score:.3f})")
+        print(f"\n📦 Sources used: {context.sources_used}")
 
-    # 2. Generation
+    # ─── ถ้าไม่มี context เลย ───
+    if not context.has_any():
+        return (
+            "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ "
+            "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ"
+        )
+
+    # 2. สร้าง prompt
+    context_text = context.to_prompt_text()
+
+    user_message = f"""ข้อมูลอ้างอิง:
+
+{context_text}
+
+---
+
+คำถามจากนิสิต: {question}
+
+กรุณาตอบโดยอ้างอิงจากข้อมูลข้างต้น ถ้ามีผลการคำนวณจากกฎ ให้ใช้ตัวเลขนั้นๆ"""
+
+    # 3. ส่งให้ Gemini
     llm = get_llm()
-    messages = build_prompt(question, chunks)
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=user_message),
+    ]
     response = llm.invoke(messages)
 
     return response.content
