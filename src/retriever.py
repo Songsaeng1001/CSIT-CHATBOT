@@ -11,6 +11,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 
 from src.database import sqlite_db, rules, vector_db
+from src.normalizer import normalize_query, fuzzy_contains
 
 
 # ═══════════════════════════════════════════════════════
@@ -60,38 +61,93 @@ class RetrievedContext:
 # ═══════════════════════════════════════════════════════
 
 # Patterns ที่ใช้บ่อย
-INSTRUCTOR_KEYWORDS = ["อาจารย์", "ผศ", "รศ", "ดร.", "ที่ปรึกษา", "อ."]
-LATE_KEYWORDS = ["ค่าปรับ", "ปรับ", "ล่าช้า", "ช้า", "เสียค่า"]
-CREDIT_KEYWORDS = ["หน่วยกิต", "ลงทะเบียน", "ลง"]
-GPA_KEYWORDS = ["gpa", "เกรด", "เกียรตินิยม", "เกรดเฉลี่ย"]
-STATUS_KEYWORDS = ["พ้นสภาพ", "รอพินิจ", "สถานภาพ"]
+# ═══════════════════════════════════════════════════════
+# Patterns / Keywords
+# ═══════════════════════════════════════════════════════
+
+INSTRUCTOR_KEYWORDS = [
+    "อาจารย์", "อาจาร", "อาจาน",
+    "ผศ", "รศ", "ดร.", "ดร",
+    "ที่ปรึกษา", "ทีปรึกษา",
+    "อ.",
+]
+
+LATE_KEYWORDS = [
+    "ค่าปรับ", "ปรับ", "ปลับ",
+    "ล่าช้า", "ช้า", "เลย",
+    "เสียค่า", "ค่าเสีย",
+]
+
+CREDIT_KEYWORDS = [
+    "หน่วยกิต", "หน่วยกิจ",  # รวม typo
+    "ลงทะเบียน", "ลงทะเบยน",
+    "ลง", "ลงเรียน", "เรียน",
+]
+
+GPA_KEYWORDS = [
+    "gpa", "GPA",
+    "เกรด", "เกรดเฉลี่ย", "เกรดเฉลี่ย",
+    "เกียรตินิยม", "เกียร",
+    # variants
+    "เกียดนิยม", "เกียรติ์นิยม", "เกียดติยม",
+    "เกรียตินิยม", "เกียร์ตินิยม",
+]
+
+STATUS_KEYWORDS = [
+    "พ้นสภาพ", "พนสภาพ", "พ้นสะภาพ",
+    "รอพินิจ", "รอพินิจ",
+    "สถานภาพ", "สถาน",
+]
+
+# คำที่บ่งบอก "อยากรู้จำนวน/ตัวเลข" — ช่วย disambiguate
+NUMBER_QUERY_KEYWORDS = [
+    "เท่าไร", "เท่าไหร่", "กี่", "เท่าใด",
+    "จำนวน", "ราคา", "ค่า",
+]
 
 
 def classify_query(question: str) -> QueryAnalysis:
-    """วิเคราะห์คำถาม"""
+    """
+    วิเคราะห์คำถาม
+    
+    ปรับปรุง:
+    - Normalize คำถามก่อน (แก้ typo, ตัวเลขไทย)
+    - ใช้ fuzzy matching แทน exact match
+    """
+    # ─── 0. Normalize ───
+    normalized = normalize_query(question)
+    
     analysis = QueryAnalysis(original_query=question)
-    q = question.lower()
+    # ใช้ normalized สำหรับการ match
+    q = normalized.lower()
     
     # ─── 1. ตรวจหา NU Form code ───
-    form_match = re.search(r"\bnu\s?(\d+)\b", question, re.IGNORECASE)
+    form_match = re.search(r"\bnu\s?(\d+)\b", normalized, re.IGNORECASE)
     if form_match:
         analysis.entities["form_code"] = f"NU{form_match.group(1)}"
         analysis.sources_to_use.append("sqlite_forms")
     
-    # ─── 2. ตรวจหาชื่ออาจารย์ ───
-    has_instructor_kw = any(kw in question for kw in INSTRUCTOR_KEYWORDS)
+    # ─── 2. ตรวจหาชื่ออาจารย์ (fuzzy) ───
+    has_instructor_kw = fuzzy_contains(
+        normalized, INSTRUCTOR_KEYWORDS, min_match_ratio=0.75
+    )
     if has_instructor_kw:
-        # พยายามดึงชื่อจริง — เช่น "อาจารย์เกรียงศักดิ์" → "เกรียงศักดิ์"
+        # พยายามดึงชื่ออาจารย์
         name_patterns = [
             r"อาจารย์([ก-๙a-zA-Z]+)",
+            r"อาจาร([ก-๙a-zA-Z]+)",  # ขาด ย์
             r"ผศ\.?\s*ดร\.?\s*([ก-๙]+)",
             r"รศ\.?\s*ดร\.?\s*([ก-๙]+)",
             r"อ\.\s*([ก-๙]+)",
         ]
         for pattern in name_patterns:
-            m = re.search(pattern, question)
+            m = re.search(pattern, normalized)
             if m:
-                analysis.entities["instructor_name"] = m.group(1)
+                name = m.group(1)
+                # ตัดคำต่อท้ายที่ไม่ใช่ชื่อ (เช่น "ห้องไหน")
+                name = re.split(r"[\s,]|ห้อง|อีเมล|เบอร์|รหัส", name)[0]
+                if len(name) >= 2:
+                    analysis.entities["instructor_name"] = name
                 break
         
         analysis.sources_to_use.append("sqlite_instructors")
@@ -99,33 +155,40 @@ def classify_query(question: str) -> QueryAnalysis:
     # ─── 3. ตรวจหาตัวเลข + บริบทคำนวณ ───
     
     # GPA pattern (เช่น 3.55, 1.65)
-    gpa_match = re.search(r"\b(\d\.\d{1,2})\b", question)
-    if gpa_match and any(kw in q for kw in GPA_KEYWORDS):
+    gpa_match = re.search(r"\b(\d\.\d{1,2})\b", normalized)
+    has_gpa_kw = fuzzy_contains(normalized, GPA_KEYWORDS, min_match_ratio=0.75)
+    
+    if gpa_match and has_gpa_kw:
         analysis.entities["gpa"] = float(gpa_match.group(1))
         analysis.sources_to_use.append("rule_honor")
     
     # จำนวนวัน + late
-    days_match = re.search(r"(\d+)\s*วัน", question)
-    if days_match and any(kw in q for kw in LATE_KEYWORDS):
+    days_match = re.search(r"(\d+)\s*วัน", normalized)
+    has_late_kw = fuzzy_contains(normalized, LATE_KEYWORDS, min_match_ratio=0.75)
+    
+    if days_match and has_late_kw:
         analysis.entities["days_late"] = int(days_match.group(1))
         analysis.sources_to_use.append("rule_late_fee")
     
     # หน่วยกิต
-    credits_match = re.search(r"(\d+)\s*หน่วยกิต", question)
-    if credits_match and any(kw in q for kw in CREDIT_KEYWORDS):
+    credits_match = re.search(r"(\d+)\s*(?:หน่วยกิต|หน่วยกิจ|หน่วย)", normalized)
+    has_credit_kw = fuzzy_contains(normalized, CREDIT_KEYWORDS, min_match_ratio=0.75)
+    
+    if credits_match and has_credit_kw:
         analysis.entities["credits"] = int(credits_match.group(1))
         analysis.sources_to_use.append("rule_credit")
     
     # GPA + ภาค (เช็คพ้นสภาพ)
-    if gpa_match and any(kw in q for kw in STATUS_KEYWORDS):
-        sem_match = re.search(r"(\d+)\s*ภาค", question)
+    has_status_kw = fuzzy_contains(normalized, STATUS_KEYWORDS, min_match_ratio=0.75)
+    if gpa_match and has_status_kw:
+        sem_match = re.search(r"(\d+)\s*ภาค", normalized)
         if sem_match:
             analysis.entities["gpa_status"] = float(gpa_match.group(1))
             analysis.entities["semesters"] = int(sem_match.group(1))
             analysis.sources_to_use.append("rule_status")
     
-    # ─── 4. Default: ใช้ Chroma ───
-    # เพิ่ม Chroma เสมอเพื่อเป็น context เสริม (ยกเว้นกรณีที่มีคำตอบจาก SQL/Rule แน่นอน)
+    # ─── 4. Chroma (ใช้ normalized query เพื่อค้นเจอดีขึ้น) ───
+    analysis.entities["normalized_query"] = normalized
     analysis.sources_to_use.append("chroma")
     
     return analysis
@@ -264,13 +327,22 @@ def check_status(gpa: float, semesters: int) -> list[str]:
 # ═══════════════════════════════════════════════════════
 
 def fetch_from_chroma(query: str, k: int = 3) -> list[str]:
-    """ดึง chunks จาก Chroma"""
-    results = vector_db.search(query, k=k)
+    """
+    ดึง chunks จาก Chroma
+    
+    ปรับปรุง:
+    - ใช้ normalized query (แก้ typo แล้ว)
+    - ขยาย threshold เป็น 1.5 (จาก 1.0) เพื่อทนทาน typo
+    """
+    # Normalize ก่อนค้น
+    normalized = normalize_query(query)
+    
+    results = vector_db.search(normalized, k=k)
     
     chunks = []
     for doc, score in results:
-        # กรอง chunks ที่ไม่ค่อย relevant ออก
-        if score < 1.0:  # distance ต่ำ = relevant
+        # ขยาย threshold เพื่อทนต่อ typo
+        if score < 1.5:
             chunks.append(doc.page_content.strip())
     
     return chunks
@@ -353,17 +425,24 @@ def retrieve_context(question: str, verbose: bool = False) -> RetrievedContext:
 
 if __name__ == "__main__":
     test_queries = [
+        # ✅ Normal queries (ที่เคยทดสอบสำเร็จ)
         "อาจารย์เกรียงศักดิ์ห้องอะไร",
         "NU25 ใช้ทำอะไร",
         "GPA 3.55 ได้เกียรตินิยมอะไร",
         "ลงทะเบียนช้า 7 วัน ต้องจ่ายเท่าไร",
         "ลง 24 หน่วยกิตได้ไหม",
         "GPA 1.65 หลังเรียน 3 ภาค",
-        "เบอร์โทรภาควิชา",
+        
+        # 🆕 Typo queries — ทดสอบความทนทาน
+        "อาจารเกรียงศัก อยุห้องไหน",
+        "เกียดนิยม อันดับ 1 เท่าไร",
+        "หน่วยกิจรวม CS เรียนกี่หน่วย",
+        "ลงทะเบยนช้า ๗ วัน เสียเท่าไร",
+        "ปลับลงทะเบียนช้าเท่าไหร่",
     ]
     
     print("=" * 70)
-    print("🧪 ทดสอบ Query Router")
+    print("🧪 ทดสอบ Query Router (พร้อม Typo Handling)")
     print("=" * 70)
     
     for q in test_queries:
@@ -371,8 +450,14 @@ if __name__ == "__main__":
         print("-" * 70)
         ctx = retrieve_context(q, verbose=True)
         print(f"\n📦 Sources used: {ctx.sources_used}")
-        print(f"\n--- Context ---")
-        print(ctx.to_prompt_text()[:500])
-        if len(ctx.to_prompt_text()) > 500:
-            print("...")
+        
+        preview = ctx.to_prompt_text()[:300]
+        if preview:
+            print(f"\n--- Context (preview) ---")
+            print(preview)
+            if len(ctx.to_prompt_text()) > 300:
+                print("...")
+        else:
+            print("⚠️  ไม่มี context")
+        
         print("=" * 70)
