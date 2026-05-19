@@ -41,4 +41,7 @@ loguru>=0.7.0
 # ─── Development ─────────────────────────────
 pytest>=8.0.0
 black>=24.0.0
-ipython>=8.0.0
+ipython>=8.0.0fastapi==0.136.1
+line-bot-sdk==3.23.0
+python-multipart==0.0.29
+uvicorn==0.47.0
