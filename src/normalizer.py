@@ -12,10 +12,9 @@ import re
 
 
 # ════════════════════════════════════════════════════════
-# 1. คำที่สะกดผิดบ่อย — แก้แบบ Dictionary
+# 1. คำที่สะกดผิดบ่อย
 # ════════════════════════════════════════════════════════
 
-# Key = คำที่ผิด, Value = คำที่ถูก
 COMMON_TYPOS = {
     # ─── เกียรตินิยม ───
     "เกียดนิยม": "เกียรตินิยม",
@@ -52,12 +51,12 @@ COMMON_TYPOS = {
     "ลงทเบียน": "ลงทะเบียน",
     "ลงทะเบีน": "ลงทะเบียน",
     
-   # ─── ค่าปรับ / ปรับ ───
+    # ─── ค่าปรับ / ปรับ ───
     "ค่าปลับ": "ค่าปรับ",
     "คาปรับ": "ค่าปรับ",
     "ค่าปลาบ": "ค่าปรับ",
-    "ปลับ": "ปรับ",          # ← เพิ่มตัวนี้
-    "ปลาบ": "ปรับ",          # ← เพิ่ม variant 
+    "ปลับ": "ปรับ",
+    "ปลาบ": "ปรับ",
     
     # ─── สำเร็จการศึกษา ───
     "สำเรจ": "สำเร็จ",
@@ -85,7 +84,6 @@ COMMON_TYPOS = {
     # ─── ภาควิชา ───
     "ภากวิชา": "ภาควิชา",
     "ภาคะวิชา": "ภาควิชา",
-    "ภาคะวิชา": "ภาควิชา",
     "ภากะวิชา": "ภาควิชา",
     
     # ─── ติดต่อ ───
@@ -98,7 +96,6 @@ COMMON_TYPOS = {
     "ป่ะ": "ไหม",
     "ปะ": "ไหม",
     "มัย": "ไหม",
-    "ใหม่": "ไหม",  # อันนี้ระวัง! บางครั้งอาจตั้งใจ
     
     # ─── ภาษาอังกฤษทับศัพท์ ───
     "อีเมล์": "อีเมล",
@@ -111,16 +108,14 @@ COMMON_TYPOS = {
 
 
 # ════════════════════════════════════════════════════════
-# 2. ตัวเลข — แปลงให้เป็น standard
+# 2. ตัวเลข
 # ════════════════════════════════════════════════════════
 
-# ตัวเลขภาษาไทย → อารบิก
 THAI_NUMBERS = {
     "๐": "0", "๑": "1", "๒": "2", "๓": "3", "๔": "4",
     "๕": "5", "๖": "6", "๗": "7", "๘": "8", "๙": "9",
 }
 
-# คำที่หมายถึงตัวเลข
 NUMBER_WORDS = {
     "ศูนย์": "0",
     "หนึ่ง": "1",
@@ -139,10 +134,9 @@ NUMBER_WORDS = {
 
 
 # ════════════════════════════════════════════════════════
-# 3. คำพ้องความหมาย (Synonyms)
+# 3. คำพ้องความหมาย
 # ════════════════════════════════════════════════════════
 
-# ใช้เพื่อขยายคำถาม — ช่วยให้ vector search เจอ
 SYNONYMS = {
     "เท่าไร": ["เท่าไหร่", "กี่บาท", "ค่าใช้จ่าย"],
     "ทำยังไง": ["ทำไง", "ต้องทำอะไร", "ขั้นตอน", "วิธี"],
@@ -152,7 +146,7 @@ SYNONYMS = {
 
 
 # ════════════════════════════════════════════════════════
-# 4. Functions
+# 4. Helper Functions (ต้อง define ก่อน normalize_query!)
 # ════════════════════════════════════════════════════════
 
 def normalize_thai_numbers(text: str) -> str:
@@ -163,62 +157,19 @@ def normalize_thai_numbers(text: str) -> str:
 
 
 def normalize_spacing(text: str) -> str:
-    """จัดการช่องว่าง: ลบช่องว่างซ้ำ, ตัด whitespace ขอบ"""
-    # ลบ whitespace ซ้ำ
+    """ลบช่องว่างซ้ำ, ตัด whitespace ขอบ"""
     text = re.sub(r"\s+", " ", text)
-    # ตัด whitespace ขอบ
     text = text.strip()
     return text
 
 
 def fix_common_typos(text: str) -> str:
-    """แก้คำที่สะกดผิดบ่อย ตาม dictionary"""
+    """แก้คำที่สะกดผิดบ่อย"""
     for typo, correct in COMMON_TYPOS.items():
-        # case-insensitive replacement
         pattern = re.compile(re.escape(typo), re.IGNORECASE)
         text = pattern.sub(correct, text)
     return text
 
-def normalize_query(text: str, verbose: bool = False) -> str:
-    """..."""
-    original = text
-    
-    # 1. Spacing
-    text = normalize_spacing(text)
-    
-    # 2. Thai numbers
-    text = normalize_thai_numbers(text)
-    
-    # 3. Typos
-    text = fix_common_typos(text)
-    
-    # 4. Decimal words (สาม จุด ห้า → 3.5)  ← เพิ่มตรงนี้!
-    text = normalize_decimal_words(text)
-    
-    # 5. Number words (สาม วัน → 3 วัน)
-    text = normalize_number_words(text)
-    
-    if verbose and text != original:
-        print(f"   🔧 Normalize: '{original}' → '{text}'")
-    
-    return text
-
-def normalize_number_words(text: str) -> str:
-    """แปลงคำตัวเลข (เฉพาะที่ตามด้วย 'วัน', 'หน่วยกิต' ฯลฯ)"""
-    # เช็คคำตัวเลขที่ตามด้วย unit
-    units = ["วัน", "หน่วยกิต", "ภาค", "ปี", "เทอม", "เดือน", "บาท"]
-    
-    for word, num in NUMBER_WORDS.items():
-        for unit in units:
-            pattern = f"{word}{unit}"
-            replacement = f"{num} {unit}"
-            text = text.replace(pattern, replacement)
-            
-            # มีช่องว่างคั่นด้วย
-            pattern_with_space = f"{word} {unit}"
-            text = text.replace(pattern_with_space, f"{num} {unit}")
-    
-    return text
 
 def normalize_decimal_words(text: str) -> str:
     """
@@ -227,22 +178,18 @@ def normalize_decimal_words(text: str) -> str:
     Examples:
         "สาม จุด ห้า" → "3.5"
         "สาม จุด ห้า ห้า" → "3.55"
-        "หนึ่ง จุด หก ห้า" → "1.65"
         "GPA สาม จุด ห้า ห้า" → "GPA 3.55"
     """
-    # สร้าง pattern ที่หา: คำตัวเลข + (จุด|.) + คำตัวเลข + คำตัวเลข?
     number_pattern = "|".join(NUMBER_WORDS.keys())
-    
-    # Pattern: (เลข) จุด (เลข) (เลข)?
-    pattern = rf"({number_pattern})\s*(?:จุด|\.)\s*({number_pattern})\s*({number_pattern})?"
+    pattern = rf"({number_pattern})\s*(?:จุด|\.)\s*({number_pattern})(?:\s+({number_pattern}))?"
     
     def replace_match(match):
-        whole = NUMBER_WORDS[match.group(1)]      # ก่อนจุด
-        dec1 = NUMBER_WORDS[match.group(2)]       # หลังจุดตัวที่ 1
+        whole = NUMBER_WORDS[match.group(1)]
+        dec1 = NUMBER_WORDS[match.group(2)]
         dec2_word = match.group(3)
         
         if dec2_word:
-            dec2 = NUMBER_WORDS[dec2_word]         # หลังจุดตัวที่ 2
+            dec2 = NUMBER_WORDS[dec2_word]
             return f"{whole}.{dec1}{dec2}"
         else:
             return f"{whole}.{dec1}"
@@ -250,30 +197,51 @@ def normalize_decimal_words(text: str) -> str:
     return re.sub(pattern, replace_match, text)
 
 
+def normalize_number_words(text: str) -> str:
+    """
+    แปลงคำตัวเลข + unit → เลข + unit
+    
+    Examples:
+        "ห้าวัน" → "5 วัน"
+        "เรียนสามภาค" → "เรียน 3 ภาค"
+        "ลงสองหน่วยกิต" → "ลง 2 หน่วยกิต"
+    """
+    units = ["วัน", "หน่วยกิต", "ภาค", "ปี", "เทอม", "เดือน", "บาท"]
+    sorted_numbers = sorted(NUMBER_WORDS.items(), key=lambda x: -len(x[0]))
+    
+    for word, num in sorted_numbers:
+        for unit in units:
+            # ค้นหา: คำตัวเลข + (space?) + unit
+            # ไม่บังคับว่าก่อนหน้าต้องเป็น space — ใช้ \g<0> เก็บ space ถ้ามี
+            pattern = rf"{word}\s*{unit}\b"
+            replacement = f"{num} {unit}"
+            text = re.sub(pattern, replacement, text)
+    
+    return text
+
+
+# ════════════════════════════════════════════════════════
+# 5. Main Function
+# ════════════════════════════════════════════════════════
 
 def normalize_query(text: str, verbose: bool = False) -> str:
     """
     ทำความสะอาดคำถาม:
     1. ลบช่องว่างเกิน
-    2. แปลงตัวเลขไทย
+    2. แปลงตัวเลขไทย (๗ → 7)
     3. แก้คำที่สะกดผิด
-    4. แปลงคำตัวเลขเป็นเลข
-    
-    Returns: คำถามที่ normalize แล้ว
+    4. แปลงทศนิยมที่เป็นคำ (สาม จุด ห้า ห้า → 3.55)
+    5. แปลงคำตัวเลข (สามภาค → 3 ภาค)
+    6. Cleanup spacing
     """
     original = text
     
-    # 1. Spacing
     text = normalize_spacing(text)
-    
-    # 2. Thai numbers
     text = normalize_thai_numbers(text)
-    
-    # 3. Typos
     text = fix_common_typos(text)
-    
-    # 4. Number words
+    text = normalize_decimal_words(text)
     text = normalize_number_words(text)
+    text = normalize_spacing(text)
     
     if verbose and text != original:
         print(f"   🔧 Normalize: '{original}' → '{text}'")
@@ -282,33 +250,24 @@ def normalize_query(text: str, verbose: bool = False) -> str:
 
 
 # ════════════════════════════════════════════════════════
-# 5. Fuzzy Keyword Match
+# 6. Fuzzy Keyword Match
 # ════════════════════════════════════════════════════════
 
 def fuzzy_contains(text: str, keywords: list[str], 
                    min_match_ratio: float = 0.7,
                    normalize: bool = True) -> bool:
-    """
-    เช็คว่า text มี keyword ใด keyword หนึ่งไหม
-    
-    Args:
-        text: ข้อความที่จะค้น
-        keywords: list ของ keyword
-        min_match_ratio: 0-1 ความใกล้เคียงขั้นต่ำ
-        normalize: True = normalize text ก่อน (default True)
-    """
-    # ─── 1. Normalize ก่อน (ถ้าระบุ) ───
+    """เช็คว่า text มี keyword ใด keyword หนึ่งไหม (รองรับ typo)"""
     if normalize:
         text = normalize_query(text)
     
     text_lower = text.lower()
     
-    # ─── 2. Exact / substring match (เร็ว) ───
+    # Exact / substring match
     for kw in keywords:
         if kw.lower() in text_lower:
             return True
     
-    # ─── 3. Fuzzy match (ช้ากว่า) ───
+    # Fuzzy match
     words = re.findall(r'\b\w+\b', text_lower)
     for word in words:
         for kw in keywords:
@@ -322,17 +281,12 @@ def fuzzy_contains(text: str, keywords: list[str],
 
 
 def similarity_ratio(a: str, b: str) -> float:
-    """
-    คืนค่า similarity ratio (0-1) ระหว่าง 2 strings
-    ใช้ Levenshtein distance แบบง่าย
-    """
+    """คืนค่า similarity ratio (0-1) ระหว่าง 2 strings"""
     if not a or not b:
         return 0.0
-    
     if a == b:
         return 1.0
     
-    # คำนวณ Levenshtein distance
     if len(a) < len(b):
         a, b = b, a
     
@@ -363,20 +317,27 @@ if __name__ == "__main__":
         "เกียดนิยม อันดับ 1 เท่าไร",
         "อาจารเกรียงศัก อยุห้องไหน",
         "หน่วยกิจรวม CS เรียนกี่หน่วย",
-        "ลงทะเบยนช้า ๗ วัน เสียเท่าไร",  # มีเลขไทย
+        "ลงทะเบยนช้า ๗ วัน เสียเท่าไร",
         "ปลับลงทะเบียนช้าเท่าไหร่",
         
         # Mixed
-        "GPA เก้า ภาค เกียดนิยม",  # คำตัวเลข + typo
+        "GPA เก้า ภาค เกียดนิยม",
         "หา้อง อาจารทีปรึกษา",
         
-        # Normal (ไม่ควรเปลี่ยน)
+        # Normal
         "ลงทะเบียนเกิน 22 หน่วยกิตทำยังไง",
 
-        # 🆕 Decimal words
+        # Decimal words
         "GPA สาม จุด ห้า ห้า",
         "GPA หนึ่ง จุด หก ห้า หลังเรียนสามภาค",
         "เกรดเฉลี่ย สอง จุด แปด",
+
+        # 🆕 เพิ่ม cases ใหม่
+        "เรียนสามภาค",           # → "เรียน 3 ภาค"
+        "ลงสองหน่วยกิต",         # → "ลง 2 หน่วยกิต"
+        "หนึ่งวันก็พอ",           # → "1 วันก็พอ"
+        "ห้าง",                  # ไม่ควรเปลี่ยน (ไม่มี unit)
+        "ห้าง สรรพสินค้า",        # ไม่ควรเปลี่ยน
     ]
     
     print("=" * 70)
@@ -391,17 +352,17 @@ if __name__ == "__main__":
         else:
             print(f"\n✓ Unchanged:  {original}")
     
-    # ทดสอบ fuzzy match
+    # Fuzzy match test
     print("\n" + "=" * 70)
     print("🔍 ทดสอบ Fuzzy Match")
     print("=" * 70)
     
     keywords = ["เกียรตินิยม", "GPA", "เกรด"]
     test_queries = [
-        "เกียดนิยม อันดับ 1",   # ผิด
-        "GPA 3.5",              # ถูก
-        "เกรดเฉลี่ย",            # ถูก
-        "ข้าวผัดกุ้ง",          # ไม่เกี่ยว
+        "เกียดนิยม อันดับ 1",
+        "GPA 3.5",
+        "เกรดเฉลี่ย",
+        "ข้าวผัดกุ้ง",
     ]
     
     for q in test_queries:
