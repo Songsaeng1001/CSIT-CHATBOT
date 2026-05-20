@@ -194,6 +194,13 @@ def log_conversation(
         )
 
 
+def list_staff() -> list[dict]:
+    """ดึงรายชื่อเจ้าหน้าที่ทั้งหมด"""
+    with db_session() as conn:
+        rows = conn.execute("SELECT * FROM staff ORDER BY id").fetchall()
+        return [dict(row) for row in rows]
+
+
 if __name__ == "__main__":
     init_database()
     print("\n📊 ทดสอบ functions:")
