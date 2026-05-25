@@ -7,6 +7,7 @@ from tests.eval_data import (
     eval_graduation,
     eval_loan,
     eval_contact,
+    eval_coop,
     eval_oos,
 )
 
@@ -18,6 +19,7 @@ ALL_CATEGORIES = {
     "graduation": eval_graduation,
     "loan": eval_loan,
     "contact": eval_contact,
+    "coop": eval_coop,
     "oos": eval_oos,
 }
 
