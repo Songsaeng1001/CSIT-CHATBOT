@@ -108,7 +108,6 @@ GPA_KEYWORDS = [
     "GPA",
     "เกรด",
     "เกรดเฉลี่ย",
-    "เกรดเฉลี่ย",
     "เกียรตินิยม",
     "เกียร",
     # variants
@@ -123,7 +122,6 @@ STATUS_KEYWORDS = [
     "พ้นสภาพ",
     "พนสภาพ",
     "พ้นสะภาพ",
-    "รอพินิจ",
     "รอพินิจ",
     "สถานภาพ",
     "สถาน",
@@ -214,15 +212,20 @@ def classify_query(question: str) -> QueryAnalysis:
             m = re.search(pattern, normalized)
             if m:
                 name = m.group(1)
-                # ตัดคำต่อท้ายที่ไม่ใช่ชื่อ (เช่น "ห้องไหน")
+                # ตัดคำต่อท้ายที่ไม่ใช่ชื่อ
                 name = re.split(r"[\s,]|ห้อง|อีเมล|เบอร์|รหัส", name)[0]
                 if len(name) >= 2:
                     analysis.entities["instructor_name"] = name
                 break
 
-        has_staff_kw = fuzzy_contains(normalized, STAFF_KEYWORDS, min_match_ratio=0.75)
-        if has_staff_kw:
-            analysis.sources_to_use.append("sqlite_staff")
+        analysis.sources_to_use.append("sqlite_instructors")
+
+    # ─── 2.5 ตรวจหาคำถามเกี่ยวกับเจ้าหน้าที่ (อยู่นอก instructor block) ───
+    has_staff_kw = fuzzy_contains(
+        normalized, STAFF_KEYWORDS, min_match_ratio=0.75
+    )
+    if has_staff_kw:
+        analysis.sources_to_use.append("sqlite_staff")
 
         analysis.sources_to_use.append("sqlite_instructors")
 
@@ -531,6 +534,9 @@ if __name__ == "__main__":
         "หน่วยกิจรวม CS เรียนกี่หน่วย",
         "ลงทะเบยนช้า ๗ วัน เสียเท่าไร",
         "ปลับลงทะเบียนช้าเท่าไหร่",
+        "เบอร์โทรและอีเมลเจ้าหน้าที่ภาควิชา CSIT",
+        "พี่เฟิร์นเบอร์โทรอะไร",
+        "ติดต่อภาควิชา",
     ]
 
     print("=" * 70)
