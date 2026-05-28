@@ -1,152 +1,652 @@
 # ════════════════════════════════════════════════════════════════
 # น้องซีที — Rules for Rule-Augmented Reasoning (RAR)
-# อ้างอิงจากข้อบังคับมหาวิทยาลัยนเรศวร ว่าด้วยการศึกษาระดับปริญญาตรี พ.ศ. 2565
-# และคู่มือนิสิตระดับปริญญาตรี ปีการศึกษา 2568
+# อ้างอิงจาก:
+#   - ข้อบังคับมหาวิทยาลัยนเรศวร ว่าด้วยการศึกษาระดับปริญญาตรี พ.ศ. 2565
+#   - คู่มือนิสิตระดับปริญญาตรี ปีการศึกษา 2568
+#   - FAQ กองบริการการศึกษา (ข้อมูลเพิ่มchatbot 14/05/26)
+#   - faq_loan_kyo_so.md, contact_office.md, staff_csit.md
+# ปรับปรุงล่าสุด: 2025-05-26
 # ════════════════════════════════════════════════════════════════
 
-# ─── หน่วยกิตที่ลงทะเบียนได้ ─────────────────────────────
-registration_credits:
-  undergraduate:
-    normal_semester_max: 22       # หน่วยกิตสูงสุดต่อภาคปกติ (ระดับปริญญาตรี)
-    summer_max: 9                 # หน่วยกิตสูงสุดต่อภาคฤดูร้อน
-  graduate:
-    normal_semester_max: 15
-    summer_max: 6
 
-# ─── ค่าปรับและค่าธรรมเนียม ──────────────────────────────
-penalties:
-  late_registration_per_day: 25       # บาท/วัน ค่าปรับลงทะเบียนล่าช้า
-  late_registration_max_days: 14      # วัน หลังจากนี้พ้นสภาพ
-  late_drop_form_fee: 10              # บาท/ครั้ง ค่าถอนรายวิชา
-  reinstatement_fee:
-    undergraduate: 1000                # บาท ค่าคืนสภาพนิสิต ป.ตรี
-    graduate: 2000                     # บาท ค่าคืนสภาพนิสิต บัณฑิตศึกษา
-  late_per_week:
-    undergraduate: 100                 # บาท/สัปดาห์
-    graduate: 200                      # บาท/สัปดาห์
-  graduation_late_per_day: 50          # บาท/วันทำการ ยื่นจบล่าช้า
-  course_transfer_fee: 100             # บาท/ครั้ง ค่าเทียบโอนรายวิชา
+# ══════════════════════════════════════════════════════════════
+# SECTION 1: การลงทะเบียนเรียน
+# ══════════════════════════════════════════════════════════════
 
-# ─── ค่าธรรมเนียมขึ้นทะเบียนปริญญาบัตร ────────────────────
-graduation_fees:
-  undergraduate: 2000                  # บาท
-  graduate: 2500                       # บาท
+registration:
 
-# ─── เกณฑ์เกียรตินิยม ────────────────────────────────────
-honors:
-  first_class:
-    name: "เกียรตินิยมอันดับหนึ่ง"
-    min_gpa: 3.50
-    requirements:
-      - "ไม่เคยได้รับระดับขั้น F หรืออักษร U"
-      - "ไม่เคยลงทะเบียนเรียนซ้ำในรายวิชาใดๆ"
-      - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมตลอดหลักสูตร"
-  second_class:
-    name: "เกียรตินิยมอันดับสอง"
-    min_gpa: 3.25
-    max_gpa: 3.49
-    requirements:
-      - "ไม่เคยได้รับระดับขั้น F หรืออักษร U"
-      - "ไม่เคยลงทะเบียนเรียนซ้ำในรายวิชาใดๆ"
-      - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมตลอดหลักสูตร"
+  # --- หน่วยกิตสูงสุดต่อภาค ---
+  credit_limits:
+    undergraduate:
+      normal_semester_max: 22         # ภาคปกติ (ป.ตรี)
+      summer_max: 9                   # ภาคฤดูร้อน (ป.ตรี)
+      note: "ต้องการลงเกินต้องยื่น NU18 ผ่านอาจารย์ที่ปรึกษาและคณบดี"
+    graduate:
+      normal_semester_max: 15         # ภาคปกติ (บัณฑิตศึกษา)
+      summer_max: 6                   # ภาคฤดูร้อน (บัณฑิตศึกษา)
 
-# ─── สถานภาพนิสิตและการพ้นสภาพ ───────────────────────────
+  # --- ประเภทการลงทะเบียน ---
+  types:
+    GD:
+      name: "Grade Display"
+      description: "เรียนแบบนับหน่วยกิตและคำนวณ GPA (ปกติ)"
+    SU:
+      name: "Satisfactory/Unsatisfactory"
+      description: "เรียนแบบได้เกรด S หรือ U นับหน่วยกิตแต่ไม่คำนวณ GPA"
+    AU:
+      name: "Audit"
+      description: "เรียนแบบไม่นับหน่วยกิต ไม่คำนวณ GPA"
+    GT:
+      name: "Grade Transfer"
+      description: "ขอลงทะเบียนเรียนเทียบหน่วยกิต"
+
+  # --- กรณีเพิ่ม-ถอนรายวิชา ---
+  add_drop:
+    within_deadline_weeks: 2          # ต้องทำภายใน 2 สัปดาห์แรก (ภาคปกติ)
+    within_deadline_weeks_summer: 1   # ภาคฤดูร้อน = 1 สัปดาห์
+    add_fee: 0                        # ไม่มีค่าใช้จ่ายในการเพิ่มรายวิชา
+    drop_fee_per_time: 10             # บาท/ครั้ง สำหรับถอนรายวิชา
+    drop_no_W_if_within: "2 สัปดาห์แรก"
+    drop_get_W_if_after: "หลัง 2 สัปดาห์แรก จะติด W ในทรานสคริปต์"
+    max_week_to_drop: 12              # ถอนได้ไม่เกินสัปดาห์ที่ 12 ของภาค
+    late_add_form: "NU8"
+    late_add_penalty_per_week: 100    # บาท/สัปดาห์ (ป.ตรี)
+    late_add_max_weeks: 5             # เพิ่มได้ไม่เกิน 5 สัปดาห์หลังหมดกำหนด
+
+  # --- กรณีลงทะเบียนล่าช้า ---
+  late_registration:
+    penalty_per_day: 25               # บาท/วัน
+    max_late_weeks_before_dismissed: 2  # หลัง 2 สัปดาห์ = พ้นสภาพ
+    reinstatement_form: "NU7"
+    reinstatement_fee_undergraduate: 1000   # บาท
+    reinstatement_fee_graduate: 2000        # บาท
+    late_penalty_per_week_undergraduate: 100  # บาท/สัปดาห์ หลังพ้นสภาพ
+    late_penalty_per_week_graduate: 200       # บาท/สัปดาห์
+    max_reinstatement_weeks: 5        # ขอคืนสภาพได้ไม่เกิน 5 สัปดาห์
+
+  # --- กรณีพิเศษ: รายวิชาที่ไม่ได้สำรองที่นั่ง ---
+  reserved_section:
+    form: "NU6"
+    name: "แบบขอเปลี่ยนแปลงการสอนรายวิชา"
+    process: >
+      นิสิตยื่น NU6 ผ่านอาจารย์ที่ปรึกษา → คณบดีต้นสังกัดนิสิต →
+      อาจารย์ผู้สอน → ภาควิชา → คณะต้นสังกัดรายวิชา
+      (เพื่อสำรองที่นั่งในระบบ)
+    note: "หากพ้นกำหนด เพิ่ม-ถอนแล้ว ให้ยื่น NU8 พร้อมแนบ NU6"
+    exception: "ยกเว้นวิชาศึกษาทั่วไปที่สำรองตามแผนการเรียนของแต่ละหลักสูตร"
+
+  # --- กรณีย้ายคณะ/สาขา ---
+  transfer:
+    advance_notice_weeks: 4           # ควรยื่นก่อนวันลงทะเบียนอย่างน้อย 4 สัปดาห์
+    form: "NU13"
+    within_faculty: "ผ่านอาจารย์ที่ปรึกษา → คณบดีต้นสังกัด"
+    across_faculty: "ผ่านอาจารย์ที่ปรึกษา → คณบดีเดิม → คณบดีใหม่ → งานทะเบียนฯ"
+    loan_impact: >
+      นิสิตผู้กู้ กยศ. ที่ย้ายสาขา/คณะในเทอม 2 ต้องทำสัญญาใหม่
+      ในเทอม 1 ของปีถัดไป (ไม่สามารถกู้ในเทอม 2 ได้ทันที)
+
+  # --- กรณีลงทะเบียนเรียนซ้ำ ---
+  repeat_enrollment:
+    allowed_if_grade_below_C: true
+    mandatory_if_failed_compulsory_F: true
+    mandatory_if_failed_compulsory_U: true
+    if_section_full_use_form: "NU6"
+
+  # --- Prerequisite ---
+  prerequisite:
+    min_grade_required: "D"           # ต้องได้ ≥ D จึงลงวิชาต่อเนื่องได้
+    violation_result: "การลงทะเบียนเป็นโมฆะ และได้รับอักษร W"
+
+  # --- รายวิชาเลือกเสรี ---
+  free_elective:
+    min_credits: 6
+    excluded_codes:
+      "001xxx": "วิชาศึกษาทั่วไป ไม่นับเป็นวิชาเลือกเสรี"
+      "002xxx": "ไม่สามารถนำมานับหน่วยกิตในหมวดเลือกเสรีได้"
+
+  # --- ระบบทะเบียนออนไลน์ ---
+  online_system:
+    url: "https://www.reg.nu.ac.th"
+    enrollment_guide: "https://reg4.nu.ac.th/enrollguide.html"
+    academic_calendar: "https://reg4.nu.ac.th/registrar/calendar.asp?avs727811069=1"
+    student_manual_pdf: "https://reg4.nu.ac.th/publish/studentmanual2025_b.pdf"
+    nu_app_manual_student: "https://reg.nu.ac.th/manual/1.man-user/3.Mobile/MAN_MB-NU67-REG-1-9.STU-Mobile.pdf"
+    nu_app_manual_instructor: "https://reg.nu.ac.th/manual/1.man-user/3.Mobile/MAN_MB-NU67-REG-1-10.Ins-Mobile.pdf"
+    password_change: "https://password.nu.ac.th"
+    password_rules: "ตัวอักษร+ตัวเลข+สัญลักษณ์ (a-z, 0-9, @, *, #, &, %, $) ≥6 ตัว ต้องขึ้นต้นด้วยตัวอักษร"
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 2: การวัดและประเมินผลการศึกษา
+# ══════════════════════════════════════════════════════════════
+
+grading:
+
+  # --- ระบบเกรดและค่าคะแนน ---
+  grade_points:
+    A:   { value: 4.00, meaning: "ดีเยี่ยม (Excellent)" }
+    "B+": { value: 3.50, meaning: "ดีมาก (Very Good)" }
+    B:   { value: 3.00, meaning: "ดี (Good)" }
+    "C+": { value: 2.50, meaning: "ดีพอใช้ (Fairly Good)" }
+    C:   { value: 2.00, meaning: "พอใช้ (Fair)" }
+    "D+": { value: 1.50, meaning: "อ่อน (Poor)" }
+    D:   { value: 1.00, meaning: "อ่อนมาก (Very Poor)" }
+    F:   { value: 0.00, meaning: "ตก (Failed)" }
+
+  # --- สัญลักษณ์พิเศษ (ไม่คิด GPA) ---
+  special_grades:
+    S:  "เป็นที่พอใจ (Satisfactory) — นับหน่วยกิต ไม่คิด GPA"
+    U:  "ไม่เป็นที่พอใจ (Unsatisfactory) — นับหน่วยกิต ไม่คิด GPA"
+    I:  "การวัดผลยังไม่สมบูรณ์ (Incomplete) — ต้องแก้ภายใน 4 สัปดาห์นับจากเปิดภาคถัดไป"
+    P:  "การเรียนการสอนยังไม่สิ้นสุด (In Progress) — ใช้เฉพาะรายวิชาที่มหาวิทยาลัยกำหนด"
+    W:  "การถอนรายวิชา (Withdrawn)"
+    CA: "Credit Attempt — หน่วยกิตที่ลงทะเบียนและนับหน่วยกิต"
+    GP: "Grade Point — ผลรวมของค่าระดับขั้น × หน่วยกิตในภาค"
+    GPA: "Grade Point Average = GP ÷ CA"
+
+  # --- เกณฑ์เพื่อมีสิทธิ์สอบ ---
+  exam_eligibility:
+    min_attendance_percent: 80
+    consequence_if_below: "ได้รับ F หรือ U ทันที"
+
+  # --- การแก้ไขอักษร I และ P ---
+  incomplete_resolution:
+    I_deadline: "ภายใน 4 สัปดาห์นับจากวันเปิดภาคการศึกษาปกติถัดไป"
+    I_if_not_resolved: "เปลี่ยนเป็น F หรือ U"
+    P_resolved_when: "ผู้สอนส่ง NU33 เมื่อมีการวัดผลเสร็จสิ้น"
+    note_for_graduation: >
+      วันสำเร็จการศึกษา = วันที่ผู้สอนส่ง NU33 แก้อักษร I หรือ P ถึงงานทะเบียนฯ
+      นิสิตต้องมีสถานภาพเป็นนิสิตในขณะนั้นด้วย
+
+  # --- การคำนวณ GPA ---
+  gpa_calculation:
+    note_S_U_I_P_W: "ไม่นำมาคำนวณ GPA"
+    repeat_course: >
+      หากลงทะเบียนรายวิชาเดิมมากกว่า 1 ครั้ง ใช้ GPA จากครั้งสุดท้ายที่ลงเท่านั้น
+    transfer_credits: >
+      นิสิตที่ย้ายสถานศึกษา คำนวณ GPA เฉพาะรายวิชาที่เรียนใหม่ในมหาวิทยาลัยนเรศวร
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 3: สถานภาพนิสิตและการพ้นสภาพ
+# ══════════════════════════════════════════════════════════════
+
 academic_status:
-  pass_min_gpa: 2.00              # GPA ขั้นต่ำที่ถือว่าปกติ
-  probation_threshold: 2.00       # ต่ำกว่านี้ = รอพินิจ
-  dismissal:
-    after_2_semesters: 1.50       # หลัง 2 ภาค GPA < 1.50 = พ้นสภาพ
-    after_4_semesters: 1.75       # หลัง 4 ภาคขึ้นไป GPA < 1.75 = พ้นสภาพ
 
-# ─── ระยะเวลาการสำเร็จการศึกษา (ภาคการศึกษา) ──────────────
-graduation_duration:
-  bachelor_4year:
-    min_semesters_fulltime: 6
-    max_semesters_fulltime: 8     # 4 ปี = 8 ภาคปกติ
-    min_semesters_parttime: 14
-  bachelor_5year:
-    min_semesters_fulltime: 8
-    max_semesters_fulltime: 10
-    min_semesters_parttime: 17
-  bachelor_6year:
-    min_semesters_fulltime: 10
-    max_semesters_fulltime: 12
-    min_semesters_parttime: 20
-  bachelor_continued:
-    min_semesters_fulltime: 4
-    min_semesters_parttime: 8
-  second_degree:
-    min_semesters_fulltime: 2
-    min_semesters_parttime: 3
+  # --- นิยามสถานภาพ ---
+  definitions:
+    normal:
+      label: "นิสิตปกติ"
+      condition: "GPA สะสม ≥ 2.00"
+    probation:
+      label: "นิสิตรอพินิจ"
+      condition: "GPA สะสม < 2.00"
 
-# ─── ระบบระดับขั้นและค่าคะแนน ────────────────────────────
-grade_points:
-  A: 4.00
-  "B+": 3.50
-  B: 3.00
-  "C+": 2.50
-  C: 2.00
-  "D+": 1.50
-  D: 1.00
-  F: 0.00
+  # --- เกณฑ์พ้นสภาพจากผลการเรียน ---
+  dismissal_by_gpa:
+    after_2_semesters:
+      threshold: 1.50
+      rule: "เรียนครบ 2 ภาคปกติแล้ว GPA สะสม < 1.50 → พ้นสภาพ"
+    after_4_or_more_semesters:
+      threshold: 1.75
+      rule: "เรียนครบ 4 ภาคปกติขึ้นไปแล้ว GPA สะสม < 1.75 → พ้นสภาพ"
+    note: "ผลภาคฤดูร้อนนำไปรวมกับภาค 1 ของปีถัดไป ภาคที่ลาพักไม่นับ"
 
-grade_meanings:
-  A: "ดีเยี่ยม (Excellent)"
-  "B+": "ดีมาก (Very Good)"
-  B: "ดี (Good)"
-  "C+": "ดีพอใช้ (Fairly Good)"
-  C: "พอใช้ (Fair)"
-  "D+": "อ่อน (Poor)"
-  D: "อ่อนมาก (Very Poor)"
-  F: "ตก (Failed)"
-  S: "เป็นที่พอใจ (Satisfactory)"
-  U: "ไม่เป็นที่พอใจ (Unsatisfactory)"
-  I: "การวัดผลยังไม่สมบูรณ์ (Incomplete)"
-  P: "การเรียนการสอนยังไม่สิ้นสุด (In Progress)"
-  W: "การถอนรายวิชา (Withdrawn)"
+  # --- เกณฑ์พ้นสภาพอื่น ๆ ---
+  other_dismissal_reasons:
+    - "ลาออก"
+    - "เสียชีวิต"
+    - "โอนไปสถานศึกษาอื่น"
+    - "ขาดคุณสมบัติการเข้าศึกษา"
+    - "ไม่ลงทะเบียนภายในเวลาที่กำหนด"
+    - "มีความประพฤติไม่สมควรเป็นนิสิต"
+    - "ศึกษาเกินระยะเวลาสูงสุด 2 เท่าของหลักสูตร"
 
-# ─── เกณฑ์รางวัลเรียนดี ──────────────────────────────────
-academic_awards:
-  yearly:
-    min_credits: 32              # ลง ≥32 หน่วยกิตใน 2 ภาคปกติ
-    min_gpa: 3.75
-    must_not_have_grades:
-      - F
-      - U
-    excluded: "นิสิตปีสุดท้ายของหลักสูตรไม่อยู่ในข่ายของสิทธิ์"
-  gold_medal:
-    requirement: "เกียรตินิยมอันดับหนึ่ง + GPA ตลอดหลักสูตร ≥ 3.75"
+  # --- การขอคืนสภาพ ---
+  reinstatement:
+    form: "NU7"
+    process: "ผ่านคณบดีต้นสังกัด → งานทะเบียนฯ → ชำระค่าธรรมเนียม"
+    time_limit: "ภายใน 5 สัปดาห์นับจากวันพ้นสภาพ"
+    not_allowed_if: "พ้นสภาพเกิน 2 ปี"
+    fee_undergraduate: 1000
+    fee_graduate: 2000
 
-# ─── เกณฑ์ความรู้ภาษาอังกฤษ (CEPT) ────────────────────────
-english_requirement:
-  thai_program:
-    level: "A2"
-    min_score: 27
-    description: "นิสิตหลักสูตรไทยที่ไม่ใช่นานาชาติ"
-  international_program:
-    level: "B1"
-    min_score: 35
-    description: "นิสิตหลักสูตรนานาชาติ"
-  transfer_deadline: "ก่อนสัปดาห์สอบกลางภาค"
+  # --- การลาพักการศึกษา ---
+  leave_of_absence:
+    form: "NU17"
+    valid_reasons:
+      - "ถูกเกณฑ์ทหาร"
+      - "ได้รับทุนแลกเปลี่ยนต่างประเทศ"
+      - "เจ็บป่วยหนัก"
+      - "เหตุผลอื่นที่คณะเห็นสมควร"
+    requirement: "ผู้ปกครองต้องลงนามยินยอม (ป.ตรี)"
+    maintenance_fee: "ต้องชำระค่ารักษาสภาพนิสิตทุกภาคที่ลา"
+    deadline: "ภายใน 15 วันนับจากวันเปิดภาค"
+    note: "ภาคที่ลาพักไม่นับในการคำนวณสถานภาพนิสิต"
 
-# ─── เกณฑ์ความรู้คอมพิวเตอร์ ─────────────────────────────
-computer_requirement:
-  min_percent: 50
-  levels:
-    excellent:
-      range: [84, 100]
-      label: "ดีมาก"
-    good:
-      range: [68, 83]
-      label: "ดี"
-    fair:
-      range: [50, 67]
-      label: "พอใช้"
-    needs_improvement:
-      range: [0, 49]
-      label: "ควรปรับปรุง"
 
-# ─── คำร้องสำคัญ NU Forms ────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# SECTION 4: การสำเร็จการศึกษา
+# ══════════════════════════════════════════════════════════════
+
+graduation:
+
+  # --- คุณสมบัติสำเร็จการศึกษา ป.ตรี ---
+  requirements_undergraduate:
+    credits_complete: "เรียนครบตามโครงสร้างหลักสูตรและเงื่อนไขสาขาวิชา"
+    no_incomplete: "ไม่มีรายวิชาใดได้รับอักษร I หรือ P"
+    min_gpa: 2.00
+    english_test: "ผ่านเกณฑ์ CEPT ตามประกาศมหาวิทยาลัย"
+    computer_test: "ผ่านเกณฑ์ทดสอบคอมพิวเตอร์ฯ (≥50%)"
+    no_debt: "ไม่มีหนี้สินกับมหาวิทยาลัย"
+
+  # --- ระยะเวลาศึกษา ---
+  duration:
+    bachelor_4year:
+      min_fulltime: 6                 # ภาคปกติ (เร็วสุด)
+      max_fulltime: 8                 # ภาคปกติ (4 ปี)
+      max_allowed: 16                 # 2 เท่าของ 8 = ไม่เกิน 16 ภาค
+      min_parttime: 14
+    bachelor_5year:
+      min_fulltime: 8
+      max_fulltime: 10
+      min_parttime: 17
+    bachelor_6year_plus:
+      min_fulltime: 10
+      max_fulltime: 12
+      min_parttime: 20
+    bachelor_continued:
+      min_fulltime: 4
+      min_parttime: 8
+    second_degree:
+      min_fulltime: 2
+      min_parttime: 3
+
+  # --- ขั้นตอนการยื่นสำเร็จการศึกษา ---
+  application_process:
+    form: "NU25"
+    deadline: "ภายใน 4 สัปดาห์นับจากวันเปิดภาคการศึกษาสุดท้าย"
+    steps:
+      1: "บันทึกข้อมูลแจ้งจบที่ www.reg.nu.ac.th → เมนู ตรวจสอบจบ → แจ้งจบสำเร็จการศึกษา"
+      2: "พิมพ์แบบฟอร์ม NU25 และลงชื่อ"
+      3: "ชำระค่าธรรมเนียมขึ้นทะเบียนปริญญาบัตร"
+      4: "ยื่นเอกสารที่คณะหรืองานทะเบียนฯ พร้อมรูปถ่ายชุดครุย 2 รูป (ขนาด 2 นิ้ว ไม่เกิน 6 เดือน)"
+      5: "ลงชื่อในสมุดคุมการยื่นสำเร็จการศึกษา"
+    fees:
+      undergraduate: 2000             # บาท
+      graduate: 2500                  # บาท
+    late_submission:
+      form: "NU9"
+      penalty_per_working_day: 50     # บาท/วันทำการ
+    re_submission: >
+      หากเคยยื่นแล้วแต่ยังไม่สำเร็จ (เช่น ติด I/P/U หรือ GPA ไม่ถึง 2.00)
+      ต้องยื่นใหม่ทุกภาคที่คาดว่าจะสำเร็จ (ไม่ต้องจ่ายค่าธรรมเนียมซ้ำ)
+
+  # --- เกียรตินิยม ---
+  honors:
+    first_class:
+      name: "เกียรตินิยมอันดับหนึ่ง"
+      min_gpa: 3.50
+      conditions:
+        - "ไม่เคยได้รับ F หรือ U"
+        - "ไม่เคยลงทะเบียนเรียนซ้ำรายวิชาใดๆ"
+        - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมทั้งหลักสูตร"
+    second_class:
+      name: "เกียรตินิยมอันดับสอง"
+      min_gpa: 3.25
+      max_gpa: 3.49
+      conditions:
+        - "ไม่เคยได้รับ F หรือ U"
+        - "ไม่เคยลงทะเบียนเรียนซ้ำรายวิชาใดๆ"
+        - "เทียบโอนหน่วยกิตไม่เกิน 1/6 ของหน่วยกิตรวมทั้งหลักสูตร"
+
+  # --- รางวัลเรียนดี ---
+  academic_awards:
+    annual_certificate:
+      label: "รางวัลเรียนดีประจำปี (เกียรติบัตร)"
+      min_credits_per_year: 32        # ลง ≥32 หน่วยกิตใน 2 ภาคปกติ
+      min_gpa: 3.75
+      must_not_have: ["F", "U"]
+      excluded: "นิสิตปีสุดท้ายของหลักสูตร"
+    gold_medal:
+      label: "เหรียญทองเรียนดีตลอดหลักสูตร"
+      condition: "เกียรตินิยมอันดับหนึ่ง + GPA ตลอดหลักสูตร ≥ 3.75"
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 5: เกณฑ์ภาษาอังกฤษและคอมพิวเตอร์
+# ══════════════════════════════════════════════════════════════
+
+competency_tests:
+
+  english:
+    test_name: "CEPT (ดำเนินการโดยกองพัฒนาภาษาและกิจการต่างประเทศ)"
+    when_tested: "ปีการศึกษาแรกที่เข้าศึกษา"
+    passing_score:
+      thai_program:
+        cefr_level: "A2"
+        min_score: 27
+        description: "นิสิตหลักสูตรไทย (ไม่ใช่นานาชาติ)"
+      international_program:
+        cefr_level: "B1"
+        min_score: 35
+        description: "นิสิตหลักสูตรนานาชาติ"
+    exemption:
+      can_transfer_courses: true
+      courses_transferable:
+        B1:  "002010101 ภาษาอังกฤษเพื่อการสื่อสารในชีวิตประจำวัน → เกรด A"
+        B2:  "002010101 + 002010102 → เกรด A"
+        C1:  "002010101 + 002010102 + 002010103 → เกรด A"
+      deadline: "ยื่นขอเทียบก่อนสัปดาห์สอบกลางภาค"
+      note: "นิสิตต้องลงทะเบียนในรายวิชาที่ขอเทียบก่อน"
+
+  computer:
+    test_name: "ทดสอบความรู้ด้านคอมพิวเตอร์และเทคโนโลยีสารสนเทศ"
+    organizer: "กองบริการเทคโนโลยีสารสนเทศและการสื่อสาร (CITCOMS)"
+    passing_percent: 50
+    score_levels:
+      excellent:  { range: [84, 100], label: "ดีมาก" }
+      good:       { range: [68, 83],  label: "ดี" }
+      fair:       { range: [50, 67],  label: "พอใช้" }
+      improve:    { range: [0, 49],   label: "ควรปรับปรุง" }
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 6: หลักสูตรภาควิชา CSIT
+# ══════════════════════════════════════════════════════════════
+
+programs:
+  department: "ภาควิชาวิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ (CSIT)"
+  faculty: "คณะวิทยาศาสตร์ มหาวิทยาลัยนเรศวร"
+  system: "ทวิภาค (Semester)"
+  semester_1: "มิถุนายน – ตุลาคม"
+  semester_2: "พฤศจิกายน – มีนาคม"
+  language: "ภาษาไทย"
+
+  cs:
+    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาวิทยาการคอมพิวเตอร์"
+    full_name_en: "Bachelor of Science Program in Computer Science"
+    degree_th: "วท.บ. (วิทยาการคอมพิวเตอร์)"
+    degree_en: "B.S. (Computer Science)"
+    code_prefix: "254"
+    branch_code: "254"
+    revised_year: 2565
+    started_year: 2565
+    total_credits: 123
+    duration_years: 4
+    structure:
+      general_education: 30
+      specific_total: 87
+      specific_core: 20              # วิชาพื้นฐานวิทยาศาสตร์และคณิตศาสตร์
+      specific_compulsory: 43        # วิชาเฉพาะด้านบังคับ
+      specific_elective_min: 18      # วิชาเฉพาะด้านเลือก (ต้องเป็นวิชาเฉพาะสาขา ≥12)
+      coop_or_overseas: 6            # สหกิจศึกษา / ฝึกงานต่างประเทศ
+      free_elective: 6
+    career_examples:
+      - "นักวิชาการคอมพิวเตอร์"
+      - "นักวิเคราะห์และออกแบบระบบ"
+      - "นักพัฒนาซอฟต์แวร์/โปรแกรมเมอร์"
+      - "ผู้ดูแลระบบเครือข่าย"
+      - "นักวิเคราะห์ข้อมูล (Data Analyst)"
+      - "ผู้ดูแลความมั่นคงปลอดภัยระบบ"
+
+  it:
+    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาเทคโนโลยีสารสนเทศ"
+    full_name_en: "Bachelor of Science Program in Information Technology"
+    degree_th: "วท.บ. (เทคโนโลยีสารสนเทศ)"
+    degree_en: "B.S. (Information Technology)"
+    code_prefix: "273"
+    branch_code: "273"
+    revised_year: 2565
+    started_year: 2565
+    total_credits: 126              # มากกว่า CS อยู่ 3 หน่วยกิต
+    duration_years: 4
+    structure:
+      general_education: 30
+      specific_total: 90
+      specific_core: 14             # วิชาแกน
+      specific_compulsory: 52       # วิชาบังคับ
+      specific_elective_min: 18     # วิชาเลือก
+      coop_or_overseas: 6           # สหกิจศึกษา / ฝึกงานต่างประเทศ
+      free_elective: 6
+    career_examples:
+      - "นักวิชาการเทคโนโลยีสารสนเทศ"
+      - "นักพัฒนาระบบสารสนเทศ"
+      - "ผู้พัฒนาและดูแลเว็บไซต์"
+      - "ผู้ดูแลระบบเครือข่าย"
+      - "ผู้จัดการโครงการระบบสารสนเทศ"
+
+  # --- ความแตกต่าง CS vs IT ---
+  difference_cs_vs_it:
+    cs: "เน้นทฤษฎีและการพัฒนาซอฟต์แวร์เชิงลึก | 123 หน่วยกิต | รหัส 254"
+    it: "เน้นการประยุกต์ใช้เทคโนโลยีในองค์กรและจัดการระบบสารสนเทศ | 126 หน่วยกิต | รหัส 273"
+
+  # --- รหัสรายวิชา ---
+  course_code_structure:
+    example: "254-1-7-1 → CS ชั้นปี 1 หมวดทั่วไป ลำดับที่ 1"
+    digit_AAA:
+      "254": "วิทยาการคอมพิวเตอร์ (CS)"
+      "273": "เทคโนโลยีสารสนเทศ (IT)"
+      "001": "วิชาศึกษาทั่วไป (ไม่นับเป็นวิชาเลือกเสรี)"
+      "002": "ไม่นับเป็นวิชาเลือกเสรี"
+      "252": "คณิตศาสตร์"
+      "255": "สถิติ"
+      "251": "วิทยาศาสตร์ทั่วไป"
+    digit_B: "ชั้นปีที่ควรเรียน (หลักร้อย)"
+    digit_C:
+      "1": "วิชาทั่วไป"
+      "4": "การคำนวณ"
+      "5": "ข้อมูล"
+      "6": "ระบบ"
+      "7": "ภาษาโปรแกรม"
+      "8": "ประยุกต์"
+      "9": "การศึกษาอิสระ / สัมมนา / วิจัย"
+    digit_D: "ลำดับของรายวิชาในหมวดนั้น"
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 7: กยศ. (กองทุนเงินให้กู้ยืมเพื่อการศึกษา)
+# ══════════════════════════════════════════════════════════════
+
+student_loan:
+
+  # --- นโยบาย bot ---
+  bot_policy:
+    redirect: true
+    reason: >
+      ข้อมูล กยศ. มีความละเอียดอ่อน อาจเปลี่ยนแปลงบ่อย และต้องถูกต้อง 100%
+      น้องซีทีจะ redirect ไปยังช่องทางทางการแทนการตอบเองทุกกรณี
+    keywords_to_detect:
+      - "กยศ"
+      - "กรอ"
+      - "กู้ยืม"
+      - "ทุนกู้"
+      - "dsl"
+      - "ผิดนัด"
+      - "ชำระหนี้"
+      - "ดอกเบี้ย"
+      - "วงเงินกู้"
+      - "จิตอาสา"
+      - "studentloan"
+
+  # --- ลิงก์ทางการ ---
+  official_links:
+    nu_loan_page:
+      url: "https://www.acad.nu.ac.th/studentloan/"
+      label: "ข้อมูล กยศ. มหาวิทยาลัยนเรศวร"
+    dsl_system:
+      url: "https://wsa.dsl.studentloan.or.th/#/rms/rms-login"
+      label: "ระบบ DSL (ยื่นกู้ออนไลน์)"
+    mobile_app:
+      name: "กยศ. Connect"
+      platforms: ["iOS", "Android"]
+      use_for: ["ยื่นกู้", "ตรวจสอบสถานะ", "ลืมรหัสผ่าน", "ตรวจสอบค่าครองชีพ"]
+
+  # --- ช่องทางติดต่อหลัก ---
+  contact_university:
+    unit: "งานส่งเสริมการจัดการศึกษา กองบริการการศึกษา"
+    location: "อาคารเฉลิมพระเกียรติ 72 พรรษา (ตึก QS) มหาวิทยาลัยนเรศวร"
+    phones:
+      main: "0-5596-8316"
+      loan_direct: "0-5596-8319"     # กยศ. โดยตรง
+      academic: "0-5596-8317"        # ส่งเสริมการจัดการศึกษา
+    hours: "จันทร์–ศุกร์ 08.30–16.30 น. (ยกเว้นวันหยุดราชการ)"
+    email: "acad@nu.ac.th"
+    website: "www.acad.nu.ac.th"
+
+  # --- ช่องทางติดต่อภาควิชา CSIT ---
+  contact_csit:
+    name_full: "นางสาวณัฐปกรณ์ ทูลแก้วธัญธร"
+    nickname: "พี่เฟิร์น"
+    title: "เจ้าหน้าที่บริหารงานทั่วไป"
+    phone: "055-963262"
+    email: "nutthapakornm@nu.ac.th"
+    location: "ภาควิชา CSIT คณะวิทยาศาสตร์"
+
+  # --- ข้อมูลพื้นฐานที่ bot ตอบได้ (ข้อเท็จจริงคงที่) ---
+  basic_facts:
+    voluntary_hours_per_year: 36
+    voluntary_period: "1 พฤษภาคม – 30 เมษายนของปีถัดไป"
+    voluntary_type: "จิตอาสาด้านจิตสาธารณะเท่านั้น"
+    voluntary_online_platforms:
+      - "SET e-Learning (กยศ.)"
+      - "กอช. (กองทุนการออมแห่งชาติ)"
+    elearning_mandatory_hours: 6     # SET e-Learning ภาคบังคับ
+    elearning_courses: 6             # จำนวน 6 หลักสูตร
+    cost_of_living_transfer_days: 30 # วันโอนค่าครองชีพหลัง upload สัญญา
+    tuition_refund_days: 30          # วันที่กองคลังคืนเงินค่าเทอมที่สำรองจ่าย
+    freshman_first_semester:
+      must_pay_upfront: true
+      reason: "กระบวนการอนุมัติเงินกู้ยังไม่ทันรอบลงทะเบียน"
+      note: "เทอม 2 เป็นต้นไปมหาวิทยาลัยขึ้นทะเบียนเป็นประเภท R ไม่ต้องสำรองจ่าย"
+    renewal_process: "เทอม 2–3 ทำเฉพาะขั้นตอนที่ 4 และ 8 เท่านั้น"
+    forgot_password:
+      steps:
+        1: "เปิดแอป 'กยศ. Connect' หรือเข้า Google Chrome"
+        2: "กด 'ลืมรหัสผ่าน'"
+        3: "กรอกเลขบัตรประจำตัวประชาชน 13 หลัก"
+        4: "กรอกอีเมล หรือหมายเลขโทรศัพท์ที่ลงทะเบียนไว้"
+    branch_transfer_loan:
+      can_apply_semester_2: false
+      reason: "ต้องทำสัญญาใหม่ในเทอม 1 ของปีการศึกษาถัดไปเท่านั้น"
+    change_dsl_info:
+      form: "กยศ.108 (แบบรายงานข้อมูลผู้กู้ยืมเงิน)"
+      send_to: "ธนาคารกรุงไทย / ธนาคารอิสลาม"
+    required_documents:
+      - "หนังสือยินยอมเปิดเผยข้อมูลของผู้กู้และผู้แทนโดยชอบธรรม"
+      - "สำเนาบัตรประจำตัวประชาชนของผู้กู้และผู้แทนโดยชอบธรรม"
+      - "เอกสารรับรองรายได้ครอบครัว"
+      - "เอกสารรับรองการทำกิจกรรมจิตอาสา"
+    debt_deferment:
+      contact_period: "มีนาคม – เมษายน ของทุกปี"
+      form: "กยศ.204 (แบบรายงานสถานภาพการศึกษา)"
+      send_to: "สถานศึกษาต้นสังกัด"
+      note: "สำหรับผู้กู้รายเก่าที่ยังไม่พร้อมชำระหนี้"
+    volunteer_activities_contact:
+      - "เจ้าหน้าที่กิจการนิสิตประจำคณะ"
+      - "กองกิจการนิสิต โทร 055-961213"
+
+  # --- Template ที่ bot ใช้ตอบ ---
+  response_template: |
+    สวัสดีค่ะ สำหรับเรื่อง กยศ. น้องซีทีขอแนะนำให้ติดต่อโดยตรงนะคะ
+    เพราะข้อมูลอาจมีการเปลี่ยนแปลงและต้องถูกต้อง 100% ค่ะ 😊
+
+    📌 ข้อมูล กยศ. มหาวิทยาลัยนเรศวร
+    🔗 https://www.acad.nu.ac.th/studentloan/
+    📱 แอป: กยศ. Connect (iOS / Android)
+
+    📞 งานส่งเสริมการจัดการศึกษา (กองบริการการศึกษา)
+    ☎️  0-5596-8316 หรือ 0-5596-8319 (กยศ. โดยตรง)
+    🏢 อาคาร QS เปิดจันทร์–ศุกร์ 08.30–16.30 น.
+
+    👩‍💼 หรือติดต่อพี่เฟิร์น ภาควิชา CSIT
+    ☎️  055-963262
+    📧 nutthapakornm@nu.ac.th
+
+    มีเรื่องอื่นให้น้องซีทีช่วยไหมคะ? 😊
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 8: ช่องทางติดต่อ
+# ══════════════════════════════════════════════════════════════
+
+contacts:
+
+  # --- ที่อยู่ภาควิชา CSIT ---
+  department_csit:
+    name: "ภาควิชาวิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ (CSIT)"
+    faculty: "คณะวิทยาศาสตร์ มหาวิทยาลัยนเรศวร"
+    address: "เลขที่ 99 หมู่ที่ 9 ตำบลท่าโพธิ์ อำเภอเมืองพิษณุโลก จังหวัดพิษณุโลก 65000"
+    phones:
+      - "055-963262"
+      - "055-963263"
+    map: "https://maps.app.goo.gl/wjmiv9KBu8Q1ScmA9"
+
+  # --- เจ้าหน้าที่ภาควิชา CSIT ---
+  staff_csit:
+    - nickname: "พี่แมว"
+      name: "นางปทุมา แก้วแดง"
+      title: "นักวิชาการพัสดุ"
+      phone: "055-963263"
+      email: "patumak@nu.ac.th"
+      room: "CSIT Department"
+    - nickname: "พี่เฟิร์น"
+      name: "นางสาวณัฐปกรณ์ ทูลแก้วธัญธร"
+      title: "เจ้าหน้าที่บริหารงานทั่วไป"
+      phone: "055-963262"
+      email: "nutthapakornm@nu.ac.th"
+      room: "CSIT Department"
+      note: "ติดต่อเรื่องทั่วไปของภาควิชาและ กยศ."
+    - nickname: "พี่โอ๊ต"
+      name: "นายธราศักดิ์ ชุนกองฮอ"
+      title: "นักวิชาการคอมพิวเตอร์"
+      phone: "055-963230"
+      email: "tharasukc@nu.ac.th"
+      room: "SC2-110"
+    - nickname: "พี่ยุทธ"
+      name: "นายยุทธพงษ์ คงถาวร"
+      title: "นายช่างเทคนิค"
+      phone: "055-963230"
+      email: "yuthapongk@nu.ac.th"
+      room: "SC2-110"
+
+  # --- งานทะเบียนนิสิต (สำหรับนิสิต CSIT / คณะวิทยาศาสตร์) ---
+  registrar_science:
+    officer: "พชรพรรณ ปลื้มวงศ์"
+    phone: "055-968315"
+    covers: "คณะวิทยาศาสตร์การแพทย์, คณะวิทยาศาสตร์ (รวม CSIT), คณะศึกษาศาสตร์"
+
+  # --- กองบริการการศึกษา ---
+  academic_affairs:
+    name: "กองบริการการศึกษา มหาวิทยาลัยนเรศวร"
+    address: "99 หมู่ 9 ตำบลท่าโพธิ์ อำเภอเมือง จังหวัดพิษณุโลก 65000"
+    hours: "จันทร์–ศุกร์ 08.30–16.30 น."
+    email: "acad@nu.ac.th"
+    website: "www.acad.nu.ac.th"
+    facebook: "กองบริการการศึกษา มหาวิทยาลัยนเรศวร"
+    phones:
+      registrar:        ["0-5596-8300", "0-5596-8324", "0-5596-8314", "0-5596-8315"]
+      teaching_support: ["0-5596-8310", "0-5596-8311"]
+      schedule:         "0-5596-8312"
+      admission:        ["0-5596-8304", "0-5596-8309"]
+      curriculum:       ["0-5596-8318", "0-5596-8306", "0-5596-8307"]
+      general_ed:       ["0-5596-8330", "0-5596-8331", "0-5596-8332"]
+      admin:            ["0-5596-8303", "0-5596-8322"]
+      loan_gyo_so:      ["0-5596-8316", "0-5596-8319"]
+      director:         "0-5596-8301"
+
+  # --- เครือข่าย/IT ---
+  citcoms:
+    name: "งานระบบเครือข่าย (CITCOMS)"
+    location: "ชั้น 2 อาคารศูนย์บริการเทคโนโลยีสารสนเทศและการสื่อสาร"
+    phone: "0-5596-1524"
+    use_for: "ปัญหาคอมพิวเตอร์และอินเทอร์เน็ต"
+
+
+# ══════════════════════════════════════════════════════════════
+# SECTION 9: คำร้องสำคัญ (NU Forms)
+# ══════════════════════════════════════════════════════════════
+
 nu_forms:
   NU1:
     name: "ระเบียนประวัตินิสิต"
@@ -163,21 +663,26 @@ nu_forms:
   NU6:
     name: "แบบขอเปลี่ยนแปลงการสอนรายวิชา"
     category: "ลงทะเบียน"
-    purpose: "ใช้เมื่อต้องการสำรองที่นั่งในรายวิชาที่ไม่ได้สำรองไว้"
+    purpose: "ใช้เมื่อรายวิชาไม่ได้สำรองที่นั่งให้หลักสูตรของนิสิต"
+    process: "นิสิต → อาจารย์ที่ปรึกษา → คณบดีต้นสังกัดนิสิต → อาจารย์ผู้สอน → ภาควิชา → คณะต้นสังกัดรายวิชา"
   NU7:
     name: "คำร้องขอคืนสภาพการเป็นนิสิต"
     category: "ลงทะเบียน"
     purpose: "ใช้เมื่อพ้นสภาพและต้องการกลับมาเป็นนิสิต"
-    fee: 1000
+    fee_undergraduate: 1000
+    fee_graduate: 2000
+    process: "ผ่านคณบดีต้นสังกัด → งานทะเบียนฯ → ชำระค่าธรรมเนียม"
   NU8:
     name: "คำร้องขอเพิ่มรายวิชาหลังกำหนด"
     category: "ลงทะเบียน"
-    purpose: "ใช้เพิ่มรายวิชาหลังพ้น 2 สัปดาห์แรก"
-    penalty: "100 บาท/สัปดาห์ (≤5 สัปดาห์หลังหมดกำหนด)"
+    purpose: "ใช้เพิ่มรายวิชาหลังพ้น 2 สัปดาห์แรกของภาค"
+    penalty_per_week: 100
+    max_weeks: 5
+    note: "หากรายวิชาไม่ได้สำรองที่นั่ง ต้องแนบ NU6 ด้วย"
   NU9:
     name: "คำร้องขอยื่นสำเร็จการศึกษาล่าช้ากว่ากำหนด"
     category: "สำเร็จการศึกษา"
-    penalty: "50 บาท/วันทำการ"
+    penalty_per_working_day: 50
   NU11:
     name: "แบบขอถอนรายวิชา (ติด W)"
     category: "ลงทะเบียน"
@@ -185,48 +690,61 @@ nu_forms:
   NU13:
     name: "คำร้องขอย้ายคณะ/สาขาวิชา"
     category: "ระเบียนประวัติ"
-    note: "ควรทำก่อนวันลงทะเบียน 4 สัปดาห์"
+    note: "ควรยื่นก่อนวันลงทะเบียนอย่างน้อย 4 สัปดาห์"
   NU14:
     name: "คำร้องขอเทียบโอนรายวิชา"
     category: "ลงทะเบียน"
     fee: 100
-    requirement: "ผลการเรียนเทียบได้ไม่ต่ำกว่าระดับขั้น C"
+    requirement: "ผลการเรียนรายวิชาที่ขอเทียบต้องได้ ≥ C"
+    must_study_at_nu: "≥ 1 ปีการศึกษา"
+    process: "นิสิต → อาจารย์ที่ปรึกษา → คณบดี → งานทะเบียนฯ → ชำระ 100 บาท"
   NU15:
     name: "คำร้องขอใบแสดงผลการเรียน (Transcript)"
     category: "เอกสารสำคัญ"
+    online: true
+    payment: "K PLUS (ธนาคารกสิกรไทย)"
+    delivery:
+      file: "ดาวน์โหลดได้ภายใน 1 ชั่วโมง"
+      mail: "รอรับภายใน 3–5 วันทำการ"
   NU16:
     name: "คำร้องขอเปลี่ยนชื่อ ชื่อสกุล ยศ"
     category: "ระเบียนประวัติ"
+    process: "แนบสำเนาหลักฐานราชการ → อาจารย์ที่ปรึกษารับทราบ → งานทะเบียนฯ"
   NU17:
     name: "คำร้องขอลาพักการศึกษา"
     category: "ระเบียนประวัติ"
-    requirement: "ผู้ปกครองต้องลงนามยินยอม"
+    requirement_undergraduate: "ผู้ปกครองต้องลงนามยินยอม"
+    process: "นิสิต → อาจารย์ที่ปรึกษา → คณบดี"
   NU18:
     name: "คำร้องทั่วไป"
     category: "ลงทะเบียน"
-    common_use: "ขอลงทะเบียนเรียนมากกว่าเกณฑ์"
+    common_uses:
+      - "ขอลงทะเบียนเรียนมากกว่าเกณฑ์ (ระบุหน่วยกิตรวมและเหตุผล)"
+      - "ขอเทียบรายวิชา (กรณีหลักสูตรปรับปรุงแล้วรหัสเปลี่ยน)"
   NU19:
     name: "คำร้องขอลาออกจากการศึกษา"
     category: "ระเบียนประวัติ"
-    requirement: "ผู้ปกครองต้องลงนามยินยอม"
+    requirement_undergraduate: "ผู้ปกครองต้องลงนามยินยอม"
   NU20:
     name: "ใบแจ้งยอดชำระเงิน"
     category: "ลงทะเบียน"
   NU21:
     name: "คำร้องขอใบรับรอง"
     category: "เอกสารสำคัญ"
-  NU22:
-    name: "รายงานสถิติจำนวนนิสิตที่ลงทะเบียนเรียน"
-    category: "สารนิเทศ"
+    online: true
   NU24:
     name: "ใบมอบฉันทะ"
     category: "ลงทะเบียน"
   NU25:
     name: "แบบขอสำเร็จการศึกษา"
     category: "สำเร็จการศึกษา"
-    deadline: "ภายใน 4 สัปดาห์หลังเปิดภาคเรียน"
+    deadline: "ภายใน 4 สัปดาห์หลังเปิดภาคเรียนสุดท้าย"
     fee_undergraduate: 2000
     fee_graduate: 2500
+    required_docs:
+      - "แบบฟอร์ม NU25 ลงชื่อแล้ว"
+      - "รูปถ่ายชุดครุย ขนาด 2 นิ้ว จำนวน 2 รูป (ไม่เกิน 6 เดือน)"
+      - "หลักฐานชำระค่าธรรมเนียมขึ้นทะเบียนปริญญาบัตร"
   NU26:
     name: "ปฏิทินการศึกษา"
     category: "สารนิเทศ"
@@ -237,80 +755,51 @@ nu_forms:
     name: "แบบแก้ไขผลการเรียนรายวิชา"
     category: "ประมวลผลข้อมูล"
     purpose: "ใช้แก้อักษร I หรือ P"
+    who_submits: "อาจารย์ผู้สอน (ไม่ใช่นิสิต)"
 
-# ─── การถอนรายวิชา ───────────────────────────────────────
-course_withdrawal:
-  within_2_weeks: "ไม่ติด W, เสียค่าใช้จ่าย 10 บาท/ครั้ง"
-  after_2_weeks: "ติดอักษร W ในระเบียนผลการเรียน"
-  max_week: 12                    # ไม่เกินสัปดาห์ที่ 12 ของภาคเรียน
 
-# ─── เวลาเรียนขั้นต่ำเพื่อมีสิทธิ์สอบ ─────────────────────
-attendance:
-  min_percent: 80                 # ต้องเข้าเรียน ≥80% ของเวลาเรียน
-  consequence: "ผู้ไม่มีสิทธิ์สอบจะได้รับ F หรือ U"
+# ══════════════════════════════════════════════════════════════
+# SECTION 10: ลิงก์สำคัญสำหรับนิสิต
+# ══════════════════════════════════════════════════════════════
 
-# ─── กยศ. ─────────────────────────────────────────────────
-student_loan:
-  voluntary_hours_per_year: 36    # ชั่วโมงจิตอาสาต่อปี
-  voluntary_period: "1 พฤษภาคม - 30 เมษายน"
-  basic_elearning_hours: 6        # ชั่วโมง SET e-Learning ภาคบังคับ
-  cost_of_living_transfer_days: 30  # วัน โอนค่าครองชีพหลัง upload สัญญา
-  freshman_first_semester: "ต้องสำรองเงินจ่ายค่าเทอมก่อน"
-
-# ─── รหัสรายวิชา ─────────────────────────────────────────
-course_code_meaning:
-  pattern: "AAA-B-C-D"
-  AAA:
-    description: "รหัสสาขา"
-    examples:
-      "254": "วิทยาการคอมพิวเตอร์ (CS)"
-      "273": "เทคโนโลยีสารสนเทศ (IT)"
-      "001": "วิชาศึกษาทั่วไป"
-      "002": "ไม่นับเป็นวิชาเลือกเสรี"
-  B: "ชั้นปีที่ควรเรียน (หลักร้อย)"
-  C:
-    description: "หมวดวิชา (หลักสิบ)"
-    values:
-      "1": "วิชาทั่วไป"
-      "4": "การคำนวณ"
-      "5": "ข้อมูล"
-      "6": "ระบบ"
-      "7": "ภาษาโปรแกรม"
-      "8": "ประยุกต์"
-      "9": "การศึกษาอิสระ/สัมมนา/วิจัย"
-  D: "ลำดับของรายวิชาในหมวด (หลักหน่วย)"
-
-# ─── หลักสูตรของภาควิชา CSIT ─────────────────────────────
-programs:
-  cs:
-    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาวิทยาการคอมพิวเตอร์"
-    full_name_en: "Bachelor of Science Program in Computer Science"
-    code_prefix: "254"
-    total_credits: 123
-    duration_years: 4
-    structure:
-      general_education: 30
-      specific: 87
-      free_elective: 6
-  it:
-    full_name_th: "วิทยาศาสตรบัณฑิต สาขาวิชาเทคโนโลยีสารสนเทศ"
-    full_name_en: "Bachelor of Science Program in Information Technology"
-    code_prefix: "273"
-    total_credits: 126
-    duration_years: 4
-    structure:
-      general_education: 30
-      specific: 90
-      free_elective: 6
-
-# ─── วิชาเลือกเสรี — เงื่อนไข ────────────────────────────
-free_elective:
-  min_credits: 6
-  excluded_codes:
-    - "001"   # วิชาศึกษาทั่วไป
-    - "002"   # ไม่นับเป็นเลือกเสรี
-
-# ─── Prerequisite Rules ──────────────────────────────────
-prerequisite:
-  min_grade: "D"                  # ต้องได้ ≥ D จึงลงวิชาต่อเนื่องได้
-  violation_result: "ลงทะเบียนผิดเงื่อนไข = โมฆะ, ติดอักษร W"
+important_links:
+  registration_system:
+    url: "https://www.reg.nu.ac.th"
+    use_for: "ลงทะเบียน, ดูผลการเรียน, ขอเอกสาร, ยื่นคำร้อง"
+  enrollment_guide:
+    url: "https://reg4.nu.ac.th/enrollguide.html"
+    use_for: "คำแนะนำการลงทะเบียนเรียน"
+  academic_calendar:
+    url: "https://reg4.nu.ac.th/registrar/calendar.asp?avs727811069=1"
+    use_for: "ปฏิทินการศึกษา"
+  student_manual:
+    url: "https://reg4.nu.ac.th/publish/studentmanual2025_b.pdf"
+    use_for: "คู่มือนิสิตระดับปริญญาตรี ปีการศึกษา 2568"
+  nu_app_student:
+    url: "https://reg.nu.ac.th/manual/1.man-user/3.Mobile/MAN_MB-NU67-REG-1-9.STU-Mobile.pdf"
+    use_for: "คู่มือ NU App สำหรับนิสิต"
+  nu_app_instructor:
+    url: "https://reg.nu.ac.th/manual/1.man-user/3.Mobile/MAN_MB-NU67-REG-1-10.Ins-Mobile.pdf"
+    use_for: "คู่มือ NU App สำหรับผู้สอน"
+  password_change:
+    url: "https://password.nu.ac.th"
+    use_for: "เปลี่ยนรหัสผ่านระบบทะเบียนออนไลน์"
+  loan_nu:
+    url: "https://www.acad.nu.ac.th/studentloan/"
+    use_for: "ข้อมูล กยศ. มหาวิทยาลัยนเรศวร"
+  loan_dsl:
+    url: "https://wsa.dsl.studentloan.or.th/#/rms/rms-login"
+    use_for: "ระบบ DSL ยื่นกู้ออนไลน์"
+  academic_affairs_web:
+    url: "www.acad.nu.ac.th"
+    use_for: "เว็บไซต์กองบริการการศึกษา"
+  department_map:
+    url: "https://maps.app.goo.gl/wjmiv9KBu8Q1ScmA9"
+    use_for: "แผนที่ภาควิชา CSIT"
+  course_structure:
+    url: "https://www.acad.nu.ac.th/course/"
+    use_for: "โครงสร้างหลักสูตรทุกสาขาวิชา"
+  feedback:
+    url: "www.acad.nu.ac.th"
+    use_for: "แบบฟอร์มข้อเสนอแนะ กองบริการการศึกษา"
+    email: "acad@nu.ac.th"

@@ -62,59 +62,45 @@ def get_llm():
     return _llm
 
 
-def answer(question: str, verbose: bool = False) -> str:
-    """
-    ตอบคำถาม 1 ครั้ง — RAR flow (RAG + Rules + SQLite)
-    
-    Args:
-        question: คำถามจากผู้ใช้
-        verbose: แสดงรายละเอียดการค้นหา
-    
-    Returns:
-        คำตอบจาก Gemini
-    """
-    # ── Import retriever ──
+def answer(question: str, verbose: bool = False, history: list = []) -> str:
     from src.retriever import retrieve_context
-    
-    # 1. Retrieve จากทุก source (Chroma + SQLite + Rules)
-    context = retrieve_context(question, verbose=verbose)
-    
-    if verbose:
-        print(f"\n📦 Sources used: {context.sources_used}")
-    
-    # ─── ถ้าไม่มี context เลย ───
+
+    # ส่ง history เข้าไปด้วย ← แก้จากเดิมที่ไม่ได้ส่ง
+    context = retrieve_context(question, verbose=verbose, history=history)
+
     if not context.has_any():
-        # 📝 เก็บ log คำถามที่ตอบไม่ได้ (เพื่อปรับปรุงระบบในอนาคต)
         log_unanswered_question(question)
-        
         return (
             "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ "
             "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ"
         )
-    
-    # 2. สร้าง prompt
+
     context_text = context.to_prompt_text()
-    
-    user_message = f"""ข้อมูลอ้างอิง:
 
-{context_text}
+    # ── สร้าง history text ──
+    history_text = ""
+    if history:
+        lines = []
+        for msg in history[-6:]:  # แค่ 3 คู่ล่าสุด
+            role = "นิสิต" if msg["role"] == "user" else "น้องซีที"
+            lines.append(f"{role}: {msg['content']}")
+        history_text = "\n".join(lines)
 
----
+# ── สร้าง prompt ──
+    user_message = f"""ข้อมูลอ้างอิง:\n\n{context_text}\n\n---\n"""
 
-คำถามจากนิสิต: {question}
+    if history_text:
+        user_message += f"""การสนทนาก่อนหน้า:\n{history_text}\n\n---\n"""
 
-กรุณาตอบโดยอ้างอิงจากข้อมูลข้างต้น ถ้ามีผลการคำนวณจากกฎ ให้ใช้ตัวเลขนั้นๆ"""
-    
-    # 3. ส่งให้ Gemini
+    user_message += f"คำถามจากนิสิต: {question}"
+
     llm = get_llm()
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=user_message),
     ]
     response = llm.invoke(messages)
-    
     return response.content
-
 
 def print_welcome():
     """แสดงข้อความต้อนรับ"""
@@ -162,7 +148,8 @@ def main():
     
     # ─── Loop ───
     verbose = False
-    
+    from collections import deque
+    _history = deque(maxlen=6)   # ← เพิ่มบรรทัดนี้ จำ 3 คู่ล่าสุด
     while True:
         try:
             # รับ input
@@ -200,17 +187,22 @@ def main():
                 print_help()
                 continue
             
-            # ─── ถาม-ตอบ ───
+           # ─── ถาม-ตอบ ───
             print("\n💭 กำลังคิด...", end="", flush=True)
             
             try:
-                response = answer(user_input, verbose=verbose)
+                # ส่ง history เข้าไป ← แก้ตรงนี้
+                response = answer(user_input, verbose=verbose, history=list(_history))
                 
-                # ลบข้อความ "กำลังคิด..." (เลื่อนกลับ + ลบ)
+                # ลบข้อความ "กำลังคิด..."
                 print("\r" + " " * 20 + "\r", end="")
                 
                 # แสดงคำตอบ
                 print(f"💬 น้องซีที: {response}")
+                
+                # ── เก็บลง history ← เพิ่ม block นี้ ──
+                _history.append({"role": "user", "content": user_input})
+                _history.append({"role": "assistant", "content": response[:200]})
                 
             except Exception as e:
                 print(f"\r❌ เกิดข้อผิดพลาด: {e}")
