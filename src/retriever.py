@@ -13,14 +13,15 @@ from dataclasses import dataclass, field
 from src.database import sqlite_db, rules, vector_db
 from src.normalizer import normalize_query, fuzzy_contains
 
-
 # ═══════════════════════════════════════════════════════
 # Data Classes
 # ═══════════════════════════════════════════════════════
 
+
 @dataclass
 class QueryAnalysis:
     """ผลการวิเคราะห์คำถาม"""
+
     original_query: str
     entities: dict = field(default_factory=dict)
     sources_to_use: list[str] = field(default_factory=list)
@@ -29,6 +30,7 @@ class QueryAnalysis:
 @dataclass
 class RetrievedContext:
     """Context ที่ดึงมาจาก sources ต่างๆ"""
+
     sqlite_data: list[str] = field(default_factory=list)
     rule_results: list[str] = field(default_factory=list)
     rag_chunks: list[str] = field(default_factory=list)
@@ -60,59 +62,135 @@ class RetrievedContext:
 # ═══════════════════════════════════════════════════════
 
 INSTRUCTOR_KEYWORDS = [
-    "อาจารย์", "อาจาร", "อาจาน", "ผศ", "รศ", "ดร.", "ดร",
-    "ที่ปรึกษา", "ทีปรึกษา", "อ.",
+    "อาจารย์",
+    "อาจาร",
+    "อาจาน",
+    "ผศ",
+    "รศ",
+    "ดร.",
+    "ดร",
+    "ที่ปรึกษา",
+    "ทีปรึกษา",
+    "อ.",
 ]
 
 LATE_KEYWORDS = [
-    "ค่าปรับ", "ปรับ", "ปลับ", "ล่าช้า", "ช้า", "เลย",
-    "เสียค่า", "ค่าเสีย",
+    "ค่าปรับ",
+    "ปรับ",
+    "ปลับ",
+    "ล่าช้า",
+    "ช้า",
+    "เลย",
+    "เสียค่า",
+    "ค่าเสีย",
 ]
 
 CREDIT_KEYWORDS = [
-    "หน่วยกิต", "หน่วยกิจ", "ลงทะเบียน", "ลงทะเบยน",
-    "ลง", "ลงเรียน", "เรียน",
+    "หน่วยกิต",
+    "หน่วยกิจ",
+    "ลงทะเบียน",
+    "ลงทะเบยน",
+    "ลง",
+    "ลงเรียน",
+    "เรียน",
 ]
 
 GPA_KEYWORDS = [
-    "gpa", "GPA", "เกรด", "เกรดเฉลี่ย",
-    "เกียรตินิยม", "เกียร",
-    "เกียดนิยม", "เกียรติ์นิยม", "เกียดติยม",
-    "เกรียตินิยม", "เกียร์ตินิยม",
+    "gpa",
+    "GPA",
+    "เกรด",
+    "เกรดเฉลี่ย",
+    "เกียรตินิยม",
+    "เกียร",
+    "เกียดนิยม",
+    "เกียรติ์นิยม",
+    "เกียดติยม",
+    "เกรียตินิยม",
+    "เกียร์ตินิยม",
 ]
 
 STATUS_KEYWORDS = [
-    "พ้นสภาพ", "พนสภาพ", "พ้นสะภาพ", "รอพินิจ", "สถานภาพ", "สถาน",
+    "พ้นสภาพ",
+    "พนสภาพ",
+    "พ้นสะภาพ",
+    "รอพินิจ",
+    "สถานภาพ",
+    "สถาน",
 ]
 
 STAFF_KEYWORDS = [
-    "เจ้าหน้าที่", "พี่เฟิร์น", "พี่แมว", "พี่โอ๊ต", "พี่ยุทธ",
-    "ติดต่อ", "เบอร์โทร", "โทรศัพท์", "อีเมล", "อีเมลภาควิชา",
-    "ภาควิชา", "office",
+    "เจ้าหน้าที่",
+    "พี่เฟิร์น",
+    "พี่แมว",
+    "พี่โอ๊ต",
+    "พี่ยุทธ",
+    "ติดต่อ",
+    "เบอร์โทร",
+    "โทรศัพท์",
+    "อีเมล",
+    "อีเมลภาควิชา",
+    "ภาควิชา",
+    "office",
 ]
 
 NUMBER_QUERY_KEYWORDS = [
-    "เท่าไร", "เท่าไหร่", "กี่", "เท่าใด", "จำนวน", "ราคา", "ค่า",
+    "เท่าไร",
+    "เท่าไหร่",
+    "กี่",
+    "เท่าใด",
+    "จำนวน",
+    "ราคา",
+    "ค่า",
 ]
 
 # คำถามคลุมเครือที่ต้องอาศัย history
 VAGUE_WORDS = [
-    "แล้ว", "ยังไง", "อย่างไร", "ต่อ", "นั้น", "อีก", "ด้วย",
-    "แล้วถ้า", "แล้วมี", "แล้วต้อง", "แล้วจะ","ทำไง", "ทำยังไง", "ขั้นตอน", "วิธี", "ยื่น", "ดำเนินการ",
-    "เท่าไร", "เท่าไหร่", "กี่", "มีอะไร", "อะไรบ้าง",
+    "แล้ว",
+    "ยังไง",
+    "อย่างไร",
+    "ต่อ",
+    "นั้น",
+    "อีก",
+    "ด้วย",
+    "แล้วถ้า",
+    "แล้วมี",
+    "แล้วต้อง",
+    "แล้วจะ",
+    "ทำไง",
+    "ทำยังไง",
+    "ขั้นตอน",
+    "วิธี",
+    "ยื่น",
+    "ดำเนินการ",
+    "เท่าไร",
+    "เท่าไหร่",
+    "กี่",
+    "มีอะไร",
+    "อะไรบ้าง",
 ]
 
 # คำที่บ่งบอกว่าถามขั้นตอน/วิธีการ
 STEP_KEYWORDS = [
-    "ขั้นตอน", "วิธี", "ทำยังไง", "ทำอย่างไร", "ทำไง",
-    "ดำเนินการ", "ยื่นยังไง", "ยื่นอย่างไร", "ยื่นทำไง",
-    "ต้องทำ", "ต้องยื่น", "จะทำ", "จะยื่น",
+    "ขั้นตอน",
+    "วิธี",
+    "ทำยังไง",
+    "ทำอย่างไร",
+    "ทำไง",
+    "ดำเนินการ",
+    "ยื่นยังไง",
+    "ยื่นอย่างไร",
+    "ยื่นทำไง",
+    "ต้องทำ",
+    "ต้องยื่น",
+    "จะทำ",
+    "จะยื่น",
 ]
 
 
 # ═══════════════════════════════════════════════════════
 # 0. Query Resolvers (ก่อน classify)
 # ═══════════════════════════════════════════════════════
+
 
 def resolve_vague_query(question: str, history: list) -> str:
     """
@@ -185,6 +263,7 @@ def resolve_step_query(question: str) -> str:
 # 1. Query Classifier
 # ═══════════════════════════════════════════════════════
 
+
 def classify_query(question: str) -> QueryAnalysis:
     """
     วิเคราะห์คำถาม
@@ -196,7 +275,7 @@ def classify_query(question: str) -> QueryAnalysis:
     analysis = QueryAnalysis(original_query=question)
     q = normalized.lower()
 
-# ─── 1. NU Form code ───
+    # ─── 1. NU Form code ───
     form_match = re.search(r"\bnu\s?(\d+)\b", normalized, re.IGNORECASE)
     if form_match:
         analysis.entities["form_code"] = f"NU{form_match.group(1)}"
@@ -227,9 +306,7 @@ def classify_query(question: str) -> QueryAnalysis:
         analysis.sources_to_use.append("sqlite_instructors")
 
     # ─── 2.5 Staff detection ───
-    has_staff_kw = fuzzy_contains(
-        normalized, STAFF_KEYWORDS, min_match_ratio=0.75
-    )
+    has_staff_kw = fuzzy_contains(normalized, STAFF_KEYWORDS, min_match_ratio=0.75)
     if has_staff_kw:
         analysis.sources_to_use.append("sqlite_staff")
 
@@ -277,6 +354,7 @@ def classify_query(question: str) -> QueryAnalysis:
 # 2. Source Handlers
 # ═══════════════════════════════════════════════════════
 
+
 def fetch_from_sqlite_staff() -> list[str]:
     """ดึงข้อมูลเจ้าหน้าที่ภาควิชา"""
     staff_list = sqlite_db.list_staff()
@@ -311,10 +389,12 @@ def fetch_from_sqlite_instructors(name: Optional[str]) -> list[str]:
         all_inst = sqlite_db.list_instructors()
         if all_inst:
             total = len(all_inst)
-            show_count = 10
+            show_count = 20
             summary = f"รายชื่ออาจารย์ภาควิชา CSIT (มีทั้งหมด {total} ท่าน):\n"
             for inst in all_inst[:show_count]:
-                summary += f"- {inst['title_short']} {inst['name']} ห้อง {inst['office']}\n"
+                summary += (
+                    f"- {inst['title_short']} {inst['name']} ห้อง {inst['office']}\n"
+                )
             if total > show_count:
                 summary += f"\n... และอีก {total - show_count} ท่านค่ะ"
             results.append(summary)
@@ -356,6 +436,7 @@ def fetch_from_sqlite_forms(code: Optional[str]) -> list[str]:
 # ═══════════════════════════════════════════════════════
 # 3. Rule Engine Handlers
 # ═══════════════════════════════════════════════════════
+
 
 def calculate_honor(gpa: float) -> list[str]:
     honor = rules.calculate_honor(gpa)
@@ -415,6 +496,7 @@ def check_status(gpa: float, semesters: int) -> list[str]:
 # 4. RAG Handler
 # ═══════════════════════════════════════════════════════
 
+
 def fetch_from_chroma(query: str, k: int = 3) -> list[str]:
     """ดึง chunks จาก Chroma"""
     normalized = normalize_query(query)
@@ -432,7 +514,10 @@ def fetch_from_chroma(query: str, k: int = 3) -> list[str]:
 # 5. Main Retrieval Function
 # ═══════════════════════════════════════════════════════
 
-def retrieve_context(question: str, verbose: bool = False, history: list = []) -> RetrievedContext:
+
+def retrieve_context(
+    question: str, verbose: bool = False, history: list = []
+) -> RetrievedContext:
     """ฟังก์ชันหลัก: รับคำถาม → คืน context"""
 
     # ── Step 1: Resolve คำถามคลุมเครือด้วย history ──────
@@ -470,7 +555,9 @@ def retrieve_context(question: str, verbose: bool = False, history: list = []) -
             context.sources_used.append("SQLite/nu_forms")
 
             # ── เช็คว่าเป็นคำถามขั้นตอนไหม ──
-            is_step_question = any(kw in normalize_query(resolved_question) for kw in STEP_KEYWORDS)
+            is_step_question = any(
+                kw in normalize_query(resolved_question) for kw in STEP_KEYWORDS
+            )
 
             # ถ้าถามแค่ "NU17 คืออะไร" → ไม่ต้อง Chroma (SQLite พอ)
             # ถ้าถาม "ขั้นตอน NU17" → ต้อง Chroma ด้วย (SQLite ไม่มีขั้นตอน)
@@ -540,8 +627,8 @@ if __name__ == "__main__":
         "ขั้นตอน nu18 ทำไง",
         "วิธีทำ nu6",
         "nu25 ทำยังไง",
-        "ขั้นตอนสหกิจ",        # ไม่มี NU → คืนเดิม
-        "nu18 ใช้ทำอะไร",      # ไม่มี step keyword → คืนเดิม
+        "ขั้นตอนสหกิจ",  # ไม่มี NU → คืนเดิม
+        "nu18 ใช้ทำอะไร",  # ไม่มี step keyword → คืนเดิม
         "ต้องยื่น nu7 ยังไง",
         "nu17 ดำเนินการอย่างไร",
     ]

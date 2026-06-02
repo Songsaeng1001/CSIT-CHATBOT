@@ -16,7 +16,11 @@
 
 import re
 import logging
+import httpx
+import asyncio
+
 from typing import Optional
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -37,18 +41,15 @@ from src.config import (
     LINE_CHANNEL_ACCESS_TOKEN,
     APP_NAME,
     APP_ENV,
+    N8N_WEBHOOK_LOG,
 )
 from src.chat import answer
 from src.normalizer import normalize_query
-from collections import defaultdict, deque
 
-# เพิ่มตรงนี้
 from src.database import sqlite_db
 from src.database.rules import is_loan_query, get_loan_redirect_template
-
-# เก็บ history แยกตาม user_id
-# deque(maxlen=6) = จำแค่ 3 คู่ถาม-ตอบล่าสุด
-_conversation_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=6))
+from src.database.memory import init_memory, prune, get_history, add_message
+from src.database.chat_log import init_chat_log, log_chat
 
 # ─── Logging ──────────────────────────────────────
 logging.basicConfig(
@@ -58,11 +59,44 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ─── FastAPI App ──────────────────────────────────
+# ─── Lifespan (startup / shutdown) ────────────────
+# รวม logic ตอนบูตไว้ที่เดียว (แทน @app.on_event ที่ถูก deprecate
+# และอาจไม่ทำงานเมื่อใช้ lifespan)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── startup ──
+    logger.info("=" * 60)
+    logger.info(f"🤖 {APP_NAME} เริ่มทำงานแล้ว")
+    logger.info(f"🌍 Environment: {APP_ENV}")
+    logger.info(f"🔑 LINE Secret: {'✅' if LINE_CHANNEL_SECRET else '❌'}")
+    logger.info(f"🔑 LINE Token:  {'✅' if LINE_CHANNEL_ACCESS_TOKEN else '❌'}")
+    logger.info("=" * 60)
+
+    init_memory()  # สร้างตาราง conversation_memory ถ้ายังไม่มี
+    init_chat_log()
+    deleted = prune()  # ล้างประวัติเก่า (PDPA / retention)
+    logger.info(f"🧹 prune ประวัติเก่า: ลบ {deleted} แถว")
+
+    try:
+        from src.database import vector_db
+
+        count = vector_db.count_documents()
+        logger.info(f"💾 Knowledge base: {count} chunks พร้อม")
+    except Exception as e:
+        logger.error(f"⚠️  ไม่สามารถโหลด vector DB: {e}")
+
+    yield
+
+    # ── shutdown ──
+    logger.info("👋 น้องซีทีปิดบริการ")
+
+
+# ─── FastAPI App (ประกาศที่เดียวเท่านั้น) ──────────
 app = FastAPI(
     title=APP_NAME,
     description="LINE Chatbot สำหรับนิสิต CSIT — ม.นเรศวร",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -76,43 +110,112 @@ parser = WebhookParser(LINE_CHANNEL_SECRET or "")
 
 # ─── Keywords ─────────────────────────────────────
 CONTACT_KEYWORDS = [
-    "ติดต่อ", "เบอร์โทร", "โทรศัพท์", "เจ้าหน้าที่",
-    "พี่เฟิร์น", "พี่แมว", "พี่โอ๊ต", "พี่ยุทธ",
-    "ภาควิชา", "office",
+    "ติดต่อ",
+    "เบอร์โทร",
+    "โทรศัพท์",
+    "เจ้าหน้าที่",
+    "พี่เฟิร์น",
+    "พี่แมว",
+    "พี่โอ๊ต",
+    "พี่ยุทธ",
 ]
+
+LIST_ALL_KEYWORDS = [
+    "ทั้งหมด", "ทุกคน", "ทุกท่าน", "รายชื่อ",
+    "มีใครบ้าง", "มีอะไรบ้าง", "ทุกอัน", "ทุกรายการ",
+]
+
+def _wants_list_all(text: str) -> bool:
+    return any(kw in text for kw in LIST_ALL_KEYWORDS)
+
+def _form_no(code: str) -> int:
+    m = re.search(r"(\d+)", code or "")
+    return int(m.group(1)) if m else 9999
 
 INSTRUCTOR_PATTERNS = [
     r"อาจารย์([ก-๙a-zA-Z\s]+)",
     r"อาจาร([ก-๙a-zA-Z\s]+)",
+    r"จาร([ก-๙a-zA-Z\s]+)",
     r"ผศ\.?\s*ดร\.?\s*([ก-๙]+)",
     r"รศ\.?\s*ดร\.?\s*([ก-๙]+)",
     r"อ\.\s*([ก-๙]+)",
 ]
 
 
+async def send_log_to_n8n(
+    user_id: str, question: str, answer_text: str, route: str, answered: bool
+):
+    if not N8N_WEBHOOK_LOG:
+        return
+    from datetime import datetime
+
+    payload = {
+        "timestamp": datetime.now().isoformat(),
+        "user_id": user_id,
+        "question": question,
+        "answer": answer_text,
+        "route": route,
+        "answered": answered,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(N8N_WEBHOOK_LOG, json=payload)
+    except Exception as e:
+        logger.warning(f"[n8n] ส่ง log ไม่สำเร็จ: {e}")
+
+
 # ═══════════════════════════════════════════════════
 # Message Router
 # ═══════════════════════════════════════════════════
 
-def route_message(user_message: str, history: list = []):
-    """
-    วิเคราะห์ข้อความและเลือก response ที่เหมาะสม
 
-    คืนค่า: list ของ message objects (TextMessage)
-    """
+def route_message(user_message: str, history: Optional[list] = None):
+    # อย่าใช้ [] เป็น default (mutable default footgun)
+    history = history or []
     normalized = normalize_query(user_message)
 
-    # ── 1. กยศ. → Flex card ──────────────────────
+    # 1) กยศ. → redirect template
     if is_loan_query(normalized):
         logger.info("🏦 Route: loan_text")
         template = get_loan_redirect_template()
-        return [TextMessage(text=template)]
+        return [TextMessage(text=template)], "loan_redirect", True
+    
+    # 1.5) คำร้อง NU Forms ทั้งหมด → SQLite
+    if (("คำร้อง" in normalized) or ("form" in normalized.lower())
+            or ("แบบฟอร์ม" in normalized)) and _wants_list_all(normalized):
+        forms = sqlite_db.list_forms()
+        if forms:
+            logger.info("📄 Route: nuform_list_all")
+            forms = sorted(forms, key=lambda f: _form_no(f["code"]))
+            lines = [f"📄 รายการคำร้อง NU Forms ({len(forms)} รายการ)\n"]
+            for f in forms:
+                lines.append(f"• {f['code']} — {f['name_th']}")
+            text = "\n".join(lines)
+            if len(text) > 4900:
+                text = text[:4900] + "..."
+            return [TextMessage(text=text)], "nuform_list", True
+        
+    # 2.0) รายชื่ออาจารย์ทั้งหมด → SQLite (ต้องมาก่อน INSTRUCTOR_PATTERNS)
+    if ("อาจาร" in normalized) and _wants_list_all(normalized):
+        instructors = sqlite_db.list_instructors()
+        if instructors:
+            logger.info("👨‍🏫 Route: instructor_list_all")
+            lines = [f"👨‍🏫 รายชื่ออาจารย์ภาควิชา CSIT ({len(instructors)} คน)\n"]
+            for inst in instructors:
+                lines.append(
+                    f"• {inst['title_short']} {inst['name']}\n"
+                    f"  🏢 {inst.get('office') or '-'}  📧 {inst.get('email') or '-'}"
+                )
+            text = "\n".join(lines)
+            if len(text) > 4900:
+                text = text[:4900] + "..."
+            return [TextMessage(text=text)], "instructor_list", True
 
-    # ── 2. ถามอาจารย์โดยตรง → Flex card ──────────
+    # 2) อาจารย์ → SQLite
     for pattern in INSTRUCTOR_PATTERNS:
         m = re.search(pattern, normalized)
         if m:
-            name = m.group(1).strip().split()[0]  # เอาแค่คำแรก
+            name = m.group(1).strip().split()[0]
             if len(name) >= 2:
                 inst = sqlite_db.find_instructor(name)
                 if inst:
@@ -122,41 +225,58 @@ def route_message(user_message: str, history: list = []):
                         f"🏢 ห้อง: {inst.get('office', '-')}\n"
                         f"📧 {inst.get('email', '-')}"
                     )
-                    return [TextMessage(text=text)]
-            break  # เจอ pattern แล้วแต่ไม่เจอในฐานข้อมูล → ไป RAG ต่อ
+                    return [TextMessage(text=text)], "instructor", True
+            break
 
-    # ── 3. ถามติดต่อภาควิชา → Flex card ──────────
+    # 3) ติดต่อ/เจ้าหน้าที่ → ข้อความคงที่
     if any(kw in user_message for kw in CONTACT_KEYWORDS):
         logger.info("📞 Route: contact_text")
-        return [TextMessage(text=(
-            "📞 ติดต่อภาควิชา CSIT\n"
-            "👩‍💼 พี่เฟิร์น: 055-963262\n"
-            "📧 nutthapakornm@nu.ac.th\n"
-            "🏢 คณะวิทยาศาสตร์ อาคาร SC2"
-        ))]
+        return (
+            [
+                TextMessage(
+                    text=(
+                        "📞 ติดต่อภาควิชา CSIT\n"
+                        "👩‍💼 พี่เฟิร์น: 055-963262\n"
+                        "📧 nutthapakornm@nu.ac.th\n"
+                        "🏢 คณะวิทยาศาสตร์ อาคาร SC2"
+                    )
+                )
+            ],
+            "contact",
+            True,
+        )
 
-    # ── 4. RAG + RAR ── ส่ง history เข้าไปด้วย
+    # 4) อื่น ๆ → RAG (ส่ง history เข้าไปให้ resolve_vague_query/answer)
     response = answer(user_message, verbose=False, history=history)
 
-    # ตัดความยาวถ้าเกิน LINE limit
     if len(response) > 4900:
         response = response[:4900] + "...\n\n📞 ติดต่อเพิ่มเติม: 055-963262"
 
-    # ตอบไม่ได้ → Flex card แจ้งติดต่อ
     if not response or "ไม่มีข้อมูล" in response or len(response.strip()) == 0:
         logger.info("❓ Route: no_context_text")
-        return [TextMessage(text=(
-            "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ 😅\n"
-            "ติดต่อภาควิชาได้เลยนะคะ\n"
-            "📞 055-963262, 055-963263"
-        ))]
+        return (
+            [
+                TextMessage(
+                    text=(
+                        "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ 😅\n"
+                        "ติดต่อภาควิชาได้เลยนะคะ\n"
+                        "📞 055-963262, 055-963263"
+                    )
+                )
+            ],
+            "RAG",
+            False,
+        )
 
-    return [TextMessage(text=response)]
+    # หมายเหตุ: route_message ไม่เซฟ memory เอง — การเซฟอยู่ใน webhook handler
+    # (ที่ซึ่งมี user_id จริง) เพื่อแยกหน้าที่ให้ชัด
+    return [TextMessage(text=response)], "RAG", True
 
 
 # ═══════════════════════════════════════════════════
 # Routes
 # ═══════════════════════════════════════════════════
+
 
 @app.get("/")
 def root():
@@ -193,7 +313,7 @@ async def line_webhook(
     LINE Server จะ POST มาที่นี่ทุกครั้งที่มีข้อความใหม่
     1. Verify signature
     2. Parse events
-    3. Route → ส่ง Flex หรือ Text กลับ
+    3. Route → ส่งข้อความกลับ
     """
 
     # ─── 1. รับ body ───
@@ -225,41 +345,56 @@ async def line_webhook(
             if not isinstance(event.message, TextMessageContent):
                 continue
 
-            user_id     = event.source.user_id if event.source else "unknown"
+            user_id = event.source.user_id if event.source else "unknown"
             user_message = event.message.text
-            reply_token  = event.reply_token
+            reply_token = event.reply_token
 
             logger.info(f"👤 User {user_id[:8]}...: {user_message[:50]}")
 
-            # ดึง history ของ user คนนี้
-            history = list(_conversation_history[user_id])
+            # ── ดึงประวัติของ user คนนี้จาก SQLite (แทน deque ใน RAM) ──
+            history = get_history(user_id)
 
             try:
-                messages = route_message(user_message, history=history)
+                messages, route, answered = route_message(user_message, history=history)
 
-                # ── ส่งกลับ LINE ── ← เพิ่มตรงนี้
                 line_bot_api.reply_message(
                     ReplyMessageRequest(
                         reply_token=reply_token,
                         messages=messages,
                     )
                 )
-                # บันทึกลง history หลังตอบสำเร็จ
-                reply_text = messages[0].text if hasattr(messages[0], "text") else "[flex]"
-                _conversation_history[user_id].append({
-                    "role": "user",
-                    "content": user_message
-                })
-                _conversation_history[user_id].append({
-                    "role": "assistant",
-                    "content": reply_text[:200]
-                })
+
+                reply_text = (
+                    messages[0].text if hasattr(messages[0], "text") else "[flex]"
+                )
+
+                log_chat(user_id, user_message, reply_text, route, answered)
+
+                # ── ยิง log ไป n8n (ไม่บล็อกบอท) ──
+                asyncio.create_task(
+                    send_log_to_n8n(
+                        user_id=user_id,
+                        question=user_message,
+                        answer_text=reply_text,
+                        route=route,
+                        answered=answered,
+                    )
+                )
+
+                # ── เซฟประวัติลง SQLite "หลัง" ตอบเสร็จ ──
+                # ตัดคำตอบที่เก็บเหลือ 500 ตัว ให้ context ไม่บวมตอนเทิร์นถัดไป
+                add_message(user_id, "user", user_message)
+                add_message(user_id, "assistant", reply_text[:500])
+
                 logger.info(f"✅ ส่งกลับ {len(messages)} message(s)")
 
             except Exception as e:
                 logger.exception(f"❌ Error ตอนตอบ: {e}")
+                # log เคสที่ระบบล่ม/quota หมด แยกเป็น route='error'
+                # (user_id / user_message มีค่าจริงในขอบเขตนี้)
+                log_chat(user_id, user_message, "", "error", False)
 
-                # Fallback — ส่ง error message ธรรมดา
+                # Fallback — ส่ง error message ธรรมดา (ไม่เซฟ memory เทิร์นที่พัง)
                 try:
                     line_bot_api.reply_message(
                         ReplyMessageRequest(
@@ -280,27 +415,3 @@ async def line_webhook(
 
     # LINE ต้องการ 200 OK เสมอ
     return PlainTextResponse("OK", status_code=200)
-
-
-# ─── Startup / Shutdown ──────────────────────────
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("=" * 60)
-    logger.info(f"🤖 {APP_NAME} เริ่มทำงานแล้ว")
-    logger.info(f"🌍 Environment: {APP_ENV}")
-    logger.info(f"🔑 LINE Secret: {'✅' if LINE_CHANNEL_SECRET else '❌'}")
-    logger.info(f"🔑 LINE Token:  {'✅' if LINE_CHANNEL_ACCESS_TOKEN else '❌'}")
-    logger.info("=" * 60)
-
-    try:
-        from src.database import vector_db
-        count = vector_db.count_documents()
-        logger.info(f"💾 Knowledge base: {count} chunks พร้อม")
-    except Exception as e:
-        logger.error(f"⚠️  ไม่สามารถโหลด vector DB: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("👋 น้องซีทีปิดบริการ")

@@ -142,6 +142,44 @@ def init_database():
             )
         """)
 
+        # ─── registrar_staff (เจ้าหน้าที่งานทะเบียนนิสิตประจำคณะ) ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS registrar_staff (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT,
+                faculties TEXT
+            )
+        """)
+
+        # ─── coop_staff (เจ้าหน้าที่หน่วยสหกิจศึกษา) ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS coop_staff (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                nickname TEXT,
+                position TEXT,
+                phone TEXT,
+                email TEXT,
+                office TEXT
+            )
+        """)
+
+
+        # ─── office_contacts (เบอร์/ที่ตั้งหน่วยงานในมหาวิทยาลัย) ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS office_contacts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                unit TEXT NOT NULL,
+                phone TEXT,
+                location TEXT,
+                email TEXT,
+                note TEXT,
+                category TEXT
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_office_category ON office_contacts(category)")
+
     print(f"✅ สร้าง SQLite tables ที่: {SQLITE_PATH}")
 
 
@@ -179,7 +217,12 @@ def find_form(code: str) -> Optional[dict]:
         cur = conn.execute("SELECT * FROM nu_forms WHERE code = ?", (code.upper(),))
         row = cur.fetchone()
         return dict(row) if row else None
-
+    
+def list_forms() -> list[dict]:
+    """รายการ NU forms ทั้งหมด"""
+    with db_session() as conn:
+        cur = conn.execute("SELECT * FROM nu_forms ORDER BY code")
+        return [dict(r) for r in cur.fetchall()]
 
 def log_conversation(
     user_id: str, question: str, answer: str, sources: str = "", confidence: float = 0.0
