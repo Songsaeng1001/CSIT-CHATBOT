@@ -4,6 +4,16 @@ Query Router — วิเคราะห์คำถามและดึง co
 ใช้:
     from src.retriever import retrieve_context
     context = retrieve_context("ลงทะเบียนช้า 7 วันเท่าไร")
+
+หมายเหตุ (เปลี่ยนแปลง):
+    เดิมมี resolve_vague_query() ที่เอา "คำถามก่อนหน้า" จาก history มาต่อท้าย
+    คำถามคลุมเครือแบบดื้อ ๆ ซึ่งตีกับตัวเกลาคำถาม LLM (rewrite_query) ใน chat.py
+    จนคำค้นเพี้ยน (เช่น "Nu6คือ สหกิจติดต่อใคร")
+
+    ตอนนี้ย้ายหน้าที่ "ใช้ history เพื่อค้น" ไปไว้ที่ rewrite_query ใน chat.py
+    เป็นตัวเดียว retriever จึงรับ "คำถามที่เกลาเสร็จแล้ว" เข้ามาตรง ๆ
+    ไม่ยุ่งกับ history ในการสร้างคำค้นอีก
+    (history สำหรับ "ใช้ตอบ" ยังอยู่ที่ answer() ใน chat.py เหมือนเดิม)
 """
 
 import re
@@ -143,32 +153,6 @@ NUMBER_QUERY_KEYWORDS = [
     "ค่า",
 ]
 
-# คำถามคลุมเครือที่ต้องอาศัย history
-VAGUE_WORDS = [
-    "แล้ว",
-    "ยังไง",
-    "อย่างไร",
-    "ต่อ",
-    "นั้น",
-    "อีก",
-    "ด้วย",
-    "แล้วถ้า",
-    "แล้วมี",
-    "แล้วต้อง",
-    "แล้วจะ",
-    "ทำไง",
-    "ทำยังไง",
-    "ขั้นตอน",
-    "วิธี",
-    "ยื่น",
-    "ดำเนินการ",
-    "เท่าไร",
-    "เท่าไหร่",
-    "กี่",
-    "มีอะไร",
-    "อะไรบ้าง",
-]
-
 # คำที่บ่งบอกว่าถามขั้นตอน/วิธีการ
 STEP_KEYWORDS = [
     "ขั้นตอน",
@@ -186,34 +170,27 @@ STEP_KEYWORDS = [
     "จะยื่น",
 ]
 
+# หน่วยงาน/บริการเฉพาะที่มีผู้ติดต่อของตัวเอง (ไม่ใช่เจ้าหน้าที่ทั่วไปของภาควิชา)
+# ใช้กันเคส "สหกิจติดต่อใคร" ไปดึงเจ้าหน้าที่ทั่วไป (เฟิร์น/โอ๊ต) มาผิด ๆ
+SPECIFIC_UNIT_KEYWORDS = [
+    "สหกิจ",
+    "สหกิจศึกษา",
+    "ฝึกงาน",
+    "ทุน",
+    "ทุนการศึกษา",
+]
+
 
 # ═══════════════════════════════════════════════════════
 # 0. Query Resolvers (ก่อน classify)
 # ═══════════════════════════════════════════════════════
-
-
-def resolve_vague_query(question: str, history: list) -> str:
-    """
-    ถ้าคำถามคลุมเครือ (มี "แล้ว", "ยังไง" ฯลฯ)
-    ให้ต่อคำถามก่อนหน้าจาก history เข้ามา
-
-    ตัวอย่าง:
-      history: "nu6 คืออะไร"
-      question: "แล้วมีขั้นตอนยังไง"
-      → "nu6 คืออะไร แล้วมีขั้นตอนยังไง"
-    """
-    if not any(w in question for w in VAGUE_WORDS):
-        return question
-    if not history:
-        return question
-
-    last_user = next(
-        (m["content"] for m in reversed(history) if m["role"] == "user"),
-        None,
-    )
-    if last_user:
-        return f"{last_user} {question}"
-    return question
+#
+# NOTE: resolve_vague_query() ถูกถอดออกแล้ว
+# หน้าที่ "เอา history มาเกลาคำถามเพื่อค้น" ย้ายไปอยู่ที่ rewrite_query() ใน chat.py
+# retriever จะรับคำถามที่เกลาเสร็จแล้วเข้ามาตรง ๆ ไม่ยุ่งกับ history อีก
+#
+# (เหลือเฉพาะ resolve_step_query() ที่ enrich คำถาม "ขั้นตอน NU__"
+#  ด้วยข้อมูลจาก SQLite ซึ่งไม่เกี่ยวกับ history)
 
 
 def resolve_step_query(question: str) -> str:
@@ -306,8 +283,11 @@ def classify_query(question: str) -> QueryAnalysis:
         analysis.sources_to_use.append("sqlite_instructors")
 
     # ─── 2.5 Staff detection ───
+    # ถ้าเป็นหน่วยงานเฉพาะ (สหกิจ/ทุน/ฝึกงาน) ที่มีผู้ติดต่อของตัวเอง
+    # → ไม่ดึงเจ้าหน้าที่ทั่วไป (เฟิร์น/โอ๊ต) ปล่อยให้ Chroma ดึงผู้ติดต่อเฉพาะมาแทน
     has_staff_kw = fuzzy_contains(normalized, STAFF_KEYWORDS, min_match_ratio=0.75)
-    if has_staff_kw:
+    is_specific_unit = any(kw in normalized for kw in SPECIFIC_UNIT_KEYWORDS)
+    if has_staff_kw and not is_specific_unit:
         analysis.sources_to_use.append("sqlite_staff")
 
     # ─── 3. ตรวจหาตัวเลข + บริบทคำนวณ ───
@@ -518,19 +498,20 @@ def fetch_from_chroma(query: str, k: int = 3) -> list[str]:
 def retrieve_context(
     question: str, verbose: bool = False, history: list = []
 ) -> RetrievedContext:
-    """ฟังก์ชันหลัก: รับคำถาม → คืน context"""
+    """ฟังก์ชันหลัก: รับคำถาม → คืน context
 
-    # ── Step 1: Resolve คำถามคลุมเครือด้วย history ──────
-    resolved_question = resolve_vague_query(question, history)
-    if verbose and resolved_question != question:
-        print(f"🔗 Vague resolved: {resolved_question}")
+    NOTE: พารามิเตอร์ `history` ยังคงไว้เพื่อความเข้ากันได้กับ call site เดิม
+    แต่ "ไม่ได้ใช้" ในการสร้างคำค้นแล้ว — การเกลาคำถามด้วย history
+    ย้ายไปทำที่ rewrite_query() ใน chat.py ก่อนจะเรียก retrieve_context
+    (กันบั๊กตัวเกลาซ้อนกัน 2 ตัว) ทำให้ retriever รับคำถามที่เกลาเสร็จแล้วตรง ๆ
+    """
 
-    # ── Step 2: Resolve "ขั้นตอน NU" ให้ชัดขึ้น ─────────
-    resolved_question = resolve_step_query(resolved_question)
+    # ── Step 1: Resolve "ขั้นตอน NU" ให้ชัดขึ้น ─────────
+    resolved_question = resolve_step_query(question)
     if verbose:
         print(f"🔍 Final query: {resolved_question}")
 
-    # ── Step 3: Classify ──────────────────────────────────
+    # ── Step 2: Classify ──────────────────────────────────
     analysis = classify_query(resolved_question)
     context = RetrievedContext()
 
@@ -538,7 +519,7 @@ def retrieve_context(
         print(f"📋 Sources to use: {analysis.sources_to_use}")
         print(f"📌 Entities: {analysis.entities}")
 
-    # ── Step 4: ดึงข้อมูลจากแต่ละ source ─────────────────
+    # ── Step 3: ดึงข้อมูลจากแต่ละ source ─────────────────
 
     # SQLite — instructors
     if "sqlite_instructors" in analysis.sources_to_use:
@@ -638,15 +619,17 @@ if __name__ == "__main__":
         print(f"{changed} | '{q}' → '{result}'")
 
     print("\n" + "=" * 70)
-    print("🧪 ทดสอบ Memory Resolution")
+    print("🧪 ตรวจว่า history ไม่ถูกเอามาเกลาคำถามใน retriever อีกแล้ว")
     print("=" * 70)
+    print("(การเกลาด้วย history ย้ายไปที่ rewrite_query ใน chat.py)")
+    # คำถามคลุมเครือ + ส่ง history เข้ามา — retriever ต้อง 'ไม่' เอา history มาต่อท้าย
     history_test = [
         {"role": "user", "content": "nu18 ใช้ทำอะไร"},
         {"role": "assistant", "content": "NU18 คือคำร้องทั่วไป"},
     ]
     ctx = retrieve_context("แล้วมีขั้นตอนยังไง", verbose=True, history=history_test)
     print(f"📦 Sources: {ctx.sources_used}")
-    print(ctx.to_prompt_text()[:400])
+    print("☝️  Final query ควรเป็น 'แล้วมีขั้นตอนยังไง' ล้วน ๆ (ไม่มี 'nu18' มาต่อ)")
 
     print("\n" + "=" * 70)
     print("🧪 ทดสอบ Query Router ปกติ")
@@ -670,3 +653,30 @@ if __name__ == "__main__":
         preview = ctx.to_prompt_text()[:200]
         print(preview if preview else "⚠️  ไม่มี context")
         print("=" * 70)
+
+    print("\n" + "=" * 70)
+    print("🧪 ทดสอบ Staff gate (กันพี่เฟิร์นโผล่ในคำถามหน่วยงานเฉพาะ)")
+    print("=" * 70)
+    # (query, ควรมี sqlite_staff ไหม)
+    staff_gate_tests = [
+        ("ติดต่อภาควิชา", True),  # ทั่วไป → ต้องมีเจ้าหน้าที่
+        ("เจ้าหน้าที่ภาควิชาเบอร์อะไร", True),  # ทั่วไป → ต้องมี
+        ("พี่เฟิร์นเบอร์โทรอะไร", True),  # ถามชื่อตรง ๆ → ต้องมี
+        ("สหกิจติดต่อใคร", False),  # หน่วยงานเฉพาะ → ห้ามมี
+        ("ติดต่อสหกิจศึกษา", False),  # หน่วยงานเฉพาะ → ห้ามมี
+        ("ฝึกงานติดต่อเจ้าหน้าที่คนไหน", False),  # หน่วยงานเฉพาะ → ห้ามมี
+        ("ทุนการศึกษาติดต่อใคร", False),  # หน่วยงานเฉพาะ → ห้ามมี
+    ]
+    all_pass = True
+    for q, expect in staff_gate_tests:
+        analysis = classify_query(q)
+        got = "sqlite_staff" in analysis.sources_to_use
+        ok = got == expect
+        all_pass = all_pass and ok
+        mark = "✅" if ok else "❌"
+        print(
+            f"{mark} '{q}' → sqlite_staff={got} "
+            f"(คาดหวัง {expect})"
+        )
+    print("-" * 70)
+    print("🎉 ผ่านทั้งหมด" if all_pass else "⚠️  มีเคสไม่ผ่าน เช็ก keyword list")

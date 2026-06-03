@@ -5,36 +5,37 @@ Interactive Chat กับน้องซีที
 รัน: python -m src.chat
 ออก: พิมพ์ 'quit', 'exit', หรือ 'q' หรือกด Ctrl+C
 """
-import datetime                                          # ← เพิ่ม
-from pathlib import Path                                  # ← เพิ่ม
+import re
+import datetime
+from pathlib import Path
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from src.config import GOOGLE_API_KEY, PROJECT_ROOT      # ← เพิ่ม PROJECT_ROOT
+from src.config import GOOGLE_API_KEY, PROJECT_ROOT
 from src.database import vector_db
-import re
 
-# ─── Logging unanswered questions ──────────────────    ← เพิ่ม block นี้
+
+# ─── Logging unanswered questions ──────────────────
 def log_unanswered_question(question: str):
     """บันทึกคำถามที่น้องซีทีตอบไม่ได้"""
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(exist_ok=True)
-    
     log_file = log_dir / "no_context.log"
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
     try:
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"[{timestamp}] {question}\n")
     except Exception as e:
         print(f"⚠️  Cannot log: {e}")
 
+
 def _add_space_th_en(text: str) -> str:
-    """แทรกเว้นวรรคระหว่างอังกฤษ/ตัวเลข กับไทย เช่น NU6คือ → NU6 คือ"""
+    """แทรกเว้นวรรคระหว่างอังกฤษ/ตัวเลข กับไทย เช่น NU6คือ → NU6 คือ (ฟรี ไม่ใช้ LLM)"""
     text = re.sub(r'([A-Za-z0-9])([\u0e00-\u0e7f])', r'\1 \2', text)
     text = re.sub(r'([\u0e00-\u0e7f])([A-Za-z0-9])', r'\1 \2', text)
     return text
+
 
 # ─── System Prompt ─────────────────────────────────
 SYSTEM_PROMPT = """คุณคือ 'น้องซีที' ผู้ช่วย AI ของภาควิชาวิทยาการคอมพิวเตอร์
@@ -49,7 +50,30 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' ผู้ช่
 6. สามารถใช้ emoji ได้บ้างเพื่อความเป็นมิตร แต่อย่ามากเกินไป
 7. ห้ามเดาข้อมูลที่ไม่มีใน context (เช่น ชื่อเล่น เบอร์โทร ฯลฯ)
    ถ้าไม่มีข้อมูล ให้ตอบเฉพาะข้อมูลที่มีจริง
+8. ถ้าคำถามเกี่ยวกับหน่วยงาน/บริการเฉพาะ (เช่น สหกิจศึกษา ทุนการศึกษา ฝึกงาน)
+   และใน context มีผู้ติดต่อของหน่วยงานนั้นโดยตรง
+   ให้แสดงเฉพาะผู้ติดต่อของหน่วยงานนั้น ห้ามแสดงเจ้าหน้าที่ทั่วไปของภาควิชา
 """
+
+
+# ─── Prompt สำหรับเกลาคำถาม ─────────────────────────
+REWRITE_PROMPT = """คุณเป็นตัวช่วยปรับคำถามนิสิตให้เป็น "คำค้น" ที่ชัดเจน สำหรับค้นในฐานข้อมูลภาควิชา CSIT ม.นเรศวร
+
+หน้าที่: แปลงคำถามให้พร้อมค้นหา โดย:
+1. แก้คำสะกดผิด/พิมพ์เพี้ยน
+2. เว้นวรรคให้ถูก โดยเฉพาะระหว่างรหัส/ตัวเลขกับคำไทย
+3. ขยายตัวย่อ/คำไม่เป็นทางการเป็นคำเต็ม เช่น สหกิจ → สหกิจศึกษา, ลทบ → ลงทะเบียนเรียน
+4. ถ้าคำถามอ้างถึงเรื่องก่อนหน้า ให้เติมหัวข้อจากบทสนทนาก่อนหน้าให้ครบ
+5. คงความหมายเดิม ห้ามเพิ่มข้อมูลที่ไม่มี ห้ามตอบคำถาม
+
+ตัวอย่าง:
+- "Nu6คือ" → "NU6 คือ แบบฟอร์ม"
+- "สหกิจติดต่อใคร" → "สหกิจศึกษา ติดต่อเจ้าหน้าที่คนไหน"
+- (ก่อนหน้าคุยเรื่องลงทะเบียน) "แล้วต้องทำยังไง" → "ขั้นตอนการลงทะเบียนเรียนต้องทำอย่างไร"
+- ห้ามเดา intent ที่ผู้ใช้ไม่ได้พูด เช่น ถ้าถามแค่ "สหกิจ" ห้ามเติม "ติดต่อใคร"
+  ให้ขยายแค่คำ (สหกิจ → สหกิจศึกษา) ไม่ใช่เพิ่มเจตนาใหม่
+
+ตอบกลับมาเป็นคำค้นที่ปรับแล้ว "บรรทัดเดียว" เท่านั้น ห้ามมีคำอธิบายอื่น"""
 
 
 # ─── ตัวแปร global (cache) ─────────────────────────
@@ -68,14 +92,59 @@ def get_llm():
     return _llm
 
 
+def _history_text(history, limit=6):
+    """รวม history ล่าสุดเป็นข้อความ (3 คู่)"""
+    if not history:
+        return ""
+    lines = []
+    for msg in history[-limit:]:
+        role = "นิสิต" if msg["role"] == "user" else "น้องซีที"
+        lines.append(f"{role}: {msg['content']}")
+    return "\n".join(lines)
+
+
+def rewrite_query(question, history=None):
+    """เกลาคำถามด้วย LLM ให้พร้อมค้น — ถ้าพลาดคืน normalize แบบ regex แทน"""
+    history = history or []
+
+    user_content = ""
+    hist = _history_text(history)
+    if hist:
+        user_content += f"บทสนทนาก่อนหน้า:\n{hist}\n\n"
+    user_content += f"คำถามล่าสุด: {question}"
+
+    try:
+        resp = get_llm().invoke([
+            SystemMessage(content=REWRITE_PROMPT),
+            HumanMessage(content=user_content),
+        ])
+        cleaned = resp.content.strip().strip('"').strip("'").strip()
+        # safety: ว่าง หรือยาวผิดปกติ (LLM หลุดไปตอบ) → ใช้ regex normalize
+        if not cleaned or len(cleaned) > max(len(question) * 5, 200):
+            return _add_space_th_en(question)
+        return cleaned
+    except Exception as e:
+        print(f"⚠️  rewrite พลาด ใช้คำถามเดิม: {e}")
+        return _add_space_th_en(question)
+
+
 def answer(question, verbose=False, history=None):
     history = history or []
-    question = _add_space_th_en(question) 
     from src.retriever import retrieve_context
 
-    # ส่ง history เข้าไปด้วย ← แก้จากเดิมที่ไม่ได้ส่ง
-    context = retrieve_context(question, verbose=verbose, history=history)
+    # 1) ค้นด้วยคำถามที่ normalize แบบ regex ก่อน (ฟรี ไม่เสีย LLM call)
+    search_query = _add_space_th_en(question)
+    context = retrieve_context(search_query, verbose=verbose, history=history)
 
+    # 2) ถ้าค้นไม่เจอ ค่อยใช้ LLM เกลาคำถามแล้วค้นใหม่ (เสีย LLM call เฉพาะตอนจำเป็น)
+    if not context.has_any():
+        rewritten = rewrite_query(question, history)
+        if rewritten != search_query:
+            if verbose:
+                print(f"🔎 rewrite: '{search_query}' → '{rewritten}'")
+            context = retrieve_context(rewritten, verbose=verbose, history=history)
+
+    # 3) ยังไม่เจออีก = ตอบไม่ได้
     if not context.has_any():
         log_unanswered_question(question)
         return (
@@ -84,31 +153,20 @@ def answer(question, verbose=False, history=None):
         )
 
     context_text = context.to_prompt_text()
+    history_text = _history_text(history)
 
-    # ── สร้าง history text ──
-    history_text = ""
-    if history:
-        lines = []
-        for msg in history[-6:]:  # แค่ 3 คู่ล่าสุด
-            role = "นิสิต" if msg["role"] == "user" else "น้องซีที"
-            lines.append(f"{role}: {msg['content']}")
-        history_text = "\n".join(lines)
-
-# ── สร้าง prompt ──
+    # ── สร้าง prompt (ใช้ question เดิม ไม่ใช่คำที่เกลา) ──
     user_message = f"""ข้อมูลอ้างอิง:\n\n{context_text}\n\n---\n"""
-
     if history_text:
         user_message += f"""การสนทนาก่อนหน้า:\n{history_text}\n\n---\n"""
-
     user_message += f"คำถามจากนิสิต: {question}"
 
-    llm = get_llm()
-    messages = [
+    response = get_llm().invoke([
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=user_message),
-    ]
-    response = llm.invoke(messages)
+    ])
     return response.content
+
 
 def print_welcome():
     """แสดงข้อความต้อนรับ"""
@@ -138,90 +196,60 @@ def print_help():
 
 def main():
     """Loop หลัก"""
-    
-    # ─── เช็คพื้นฐาน ───
     if not GOOGLE_API_KEY:
         print("❌ ไม่พบ GOOGLE_API_KEY ใน .env")
         return
-    
+
     count = vector_db.count_documents()
     if count == 0:
         print("❌ Chroma DB ว่างเปล่า")
         print("   กรุณารัน: python -m src.ingest")
         return
-    
-    # ─── Welcome ───
+
     print_welcome()
     print(f"\n💾 โหลด knowledge base: {count} chunks พร้อม")
-    
-    # ─── Loop ───
+
     verbose = False
     from collections import deque
-    _history = deque(maxlen=6)   # ← เพิ่มบรรทัดนี้ จำ 3 คู่ล่าสุด
+    _history = deque(maxlen=6)
     while True:
         try:
-            # รับ input
             print()
             user_input = input("👤 คุณ: ").strip()
-            
-            # ข้าม input ว่าง
             if not user_input:
                 continue
-            
-            # ─── ตรวจ command ───
+
             cmd = user_input.lower()
-            
-            # ออก
             if cmd in ("quit", "exit", "q", "/quit", "/exit"):
                 print("\n👋 ลาก่อนค่ะ! ขอให้เป็นวันที่ดีนะคะ 💙")
                 break
-            
-            # เปิด/ปิด verbose
             if cmd == "/verbose":
                 verbose = not verbose
-                state = "เปิด" if verbose else "ปิด"
-                print(f"🔧 Verbose mode: {state}")
+                print(f"🔧 Verbose mode: {'เปิด' if verbose else 'ปิด'}")
                 continue
-            
-            # เคลียร์หน้าจอ
             if cmd == "/clear":
                 import os
                 os.system("clear")
                 print_welcome()
                 continue
-            
-            # ช่วยเหลือ
             if cmd in ("/help", "/?"):
                 print_help()
                 continue
-            
-           # ─── ถาม-ตอบ ───
+
             print("\n💭 กำลังคิด...", end="", flush=True)
-            
             try:
-                # ส่ง history เข้าไป ← แก้ตรงนี้
                 response = answer(user_input, verbose=verbose, history=list(_history))
-                
-                # ลบข้อความ "กำลังคิด..."
                 print("\r" + " " * 20 + "\r", end="")
-                
-                # แสดงคำตอบ
                 print(f"💬 น้องซีที: {response}")
-                
-                # ── เก็บลง history ← เพิ่ม block นี้ ──
                 _history.append({"role": "user", "content": user_input})
                 _history.append({"role": "assistant", "content": response[:200]})
-                
             except Exception as e:
                 print(f"\r❌ เกิดข้อผิดพลาด: {e}")
                 print("   ลองถามใหม่อีกครั้งนะคะ")
-        
-        # ─── Ctrl+C ───
+
         except KeyboardInterrupt:
             print("\n\n👋 ลาก่อนค่ะ! 💙")
             break
-        
-        # ─── EOF (Ctrl+D) ───
         except EOFError:
             print("\n👋 ลาก่อนค่ะ! 💙")
             break
