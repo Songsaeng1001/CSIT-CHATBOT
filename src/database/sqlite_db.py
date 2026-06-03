@@ -165,6 +165,19 @@ def init_database():
             )
         """)
 
+                # ─── loansci_staff (เจ้าหน้าที่ กยศ. คณะวิทยาศาสตร์) ───
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS loansci_staff (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                nickname TEXT,
+                position TEXT,
+                phone TEXT,
+                email TEXT,
+                office TEXT
+            )
+        """)
+
 
         # ─── office_contacts (เบอร์/ที่ตั้งหน่วยงานในมหาวิทยาลัย) ───
         cur.execute("""

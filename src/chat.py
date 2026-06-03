@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config import GOOGLE_API_KEY, PROJECT_ROOT      # ← เพิ่ม PROJECT_ROOT
 from src.database import vector_db
+import re
 
 # ─── Logging unanswered questions ──────────────────    ← เพิ่ม block นี้
 def log_unanswered_question(question: str):
@@ -29,6 +30,11 @@ def log_unanswered_question(question: str):
     except Exception as e:
         print(f"⚠️  Cannot log: {e}")
 
+def _add_space_th_en(text: str) -> str:
+    """แทรกเว้นวรรคระหว่างอังกฤษ/ตัวเลข กับไทย เช่น NU6คือ → NU6 คือ"""
+    text = re.sub(r'([A-Za-z0-9])([\u0e00-\u0e7f])', r'\1 \2', text)
+    text = re.sub(r'([\u0e00-\u0e7f])([A-Za-z0-9])', r'\1 \2', text)
+    return text
 
 # ─── System Prompt ─────────────────────────────────
 SYSTEM_PROMPT = """คุณคือ 'น้องซีที' ผู้ช่วย AI ของภาควิชาวิทยาการคอมพิวเตอร์
@@ -62,7 +68,9 @@ def get_llm():
     return _llm
 
 
-def answer(question: str, verbose: bool = False, history: list = []) -> str:
+def answer(question, verbose=False, history=None):
+    history = history or []
+    question = _add_space_th_en(question) 
     from src.retriever import retrieve_context
 
     # ส่ง history เข้าไปด้วย ← แก้จากเดิมที่ไม่ได้ส่ง
