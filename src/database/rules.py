@@ -8,6 +8,7 @@ Path mapping (rules.yaml ใหม่):
   registration_credits → registration.credit_limits
   academic_status      → academic_status
   student_loan         → student_loan (ใหม่: redirect policy)
+  academic_calendar    → academic_calendar (ใหม่: redirect ปฏิทินการศึกษา)
 """
 
 import yaml
@@ -165,6 +166,60 @@ def is_loan_query(question: str) -> bool:
 
 
 # ══════════════════════════════════════════════════════════════
+# 6. ปฏิทินการศึกษา Redirect  (ใหม่)
+# path: academic_calendar
+# ══════════════════════════════════════════════════════════════
+# วันเปิด/ปิดเทอม วันลงทะเบียน วันสอบ ฯลฯ เปลี่ยนทุกภาคเรียน
+# ไม่เก็บใน KB (เสี่ยงข้อมูลเก่า) → redirect ไปแหล่งทางการ เหมือน student_loan
+#
+# ต่างจาก loan ตรงที่ใช้ 2 ชั้นเพื่อความแม่น:
+#   - direct_keywords  → เป็นปฏิทินแน่ ๆ (เปิดเทอม/ปฏิทินการศึกษา) → redirect ทันที
+#   - topic_keywords + when_keywords → "ลงทะเบียนวันไหน" = ปฏิทิน
+#     แต่ "ลงทะเบียนยังไง" (ไม่มีคำถามเวลา) → ปล่อยไป RAG
+#
+# หมายเหตุ: ต้องมี section `academic_calendar` ใน rules.yaml ก่อน
+# ถ้ายังไม่มี ฟังก์ชันจะคืน False / ข้อความ default แบบไม่ crash
+# (ต่างจาก loan ที่อ่าน key ตรง ๆ — ทำ defensive ไว้กัน deploy ไม่พร้อมกัน)
+
+_CALENDAR_FALLBACK_TEMPLATE = (
+    "📅 เรื่องวันเปิด-ปิดเทอม วันลงทะเบียน หรือกำหนดการต่าง ๆ "
+    "แนะนำให้ดูจากปฏิทินการศึกษาของมหาวิทยาลัยโดยตรงนะคะ "
+    "เพราะวันที่จะเปลี่ยนทุกภาคเรียนค่ะ 😊\n\n"
+    "🗓️ ปฏิทินการศึกษา: https://reg4.nu.ac.th/registrar/calendar.asp?avs727811069=1\n"
+    "📞 ภาควิชา CSIT 055-963262, 055-963263"
+)
+
+
+def _calendar_policy() -> dict:
+    """ดึง bot_policy ของปฏิทิน (คืน {} ถ้ายังไม่มี section ใน yaml)"""
+    return load_rules().get("academic_calendar", {}).get("bot_policy", {})
+
+
+def get_calendar_redirect_template() -> str:
+    """ดึง response template สำหรับ redirect ปฏิทิน (มี fallback กัน crash)"""
+    return load_rules().get("academic_calendar", {}).get(
+        "response_template", _CALENDAR_FALLBACK_TEMPLATE
+    )
+
+
+def is_calendar_query(question: str) -> bool:
+    """ตรวจว่าคำถามเกี่ยวกับวัน/กำหนดการตามปฏิทินการศึกษาหรือไม่
+    - เจอคำปฏิทินตรง ๆ (direct_keywords) → True
+    - หัวข้อ (topic_keywords) + คำถามเวลา (when_keywords) → True
+    - มีแค่หัวข้อแต่ไม่ถามเวลา (เช่น "ลงทะเบียนยังไง") → False (ปล่อยไป RAG)
+    """
+    q = question.lower()
+    pol = _calendar_policy()
+
+    if any(kw.lower() in q for kw in pol.get("direct_keywords", [])):
+        return True
+
+    has_topic = any(kw.lower() in q for kw in pol.get("topic_keywords", []))
+    has_when = any(kw.lower() in q for kw in pol.get("when_keywords", []))
+    return has_topic and has_when
+
+
+# ══════════════════════════════════════════════════════════════
 # Self-test
 # ══════════════════════════════════════════════════════════════
 
@@ -199,3 +254,11 @@ if __name__ == "__main__":
     print(f"  'ดอกเบี้ยเท่าไร'     → is_loan: {is_loan_query('ดอกเบี้ยเท่าไร')}")
     print(f"  'ลงทะเบียนช้า 5 วัน' → is_loan: {is_loan_query('ลงทะเบียนช้า 5 วัน')}")
     print(f"\n  Template:\n{get_loan_redirect_template()}")
+
+    print("\n── ปฏิทินการศึกษา Redirect ──")
+    print(f"  'เปิดเทอมวันไหน'    → is_calendar: {is_calendar_query('เปิดเทอมวันไหน')}")
+    print(f"  'ลงทะเบียนวันไหน'   → is_calendar: {is_calendar_query('ลงทะเบียนวันไหน')}")
+    print(f"  'สอบปลายภาควันไหน'  → is_calendar: {is_calendar_query('สอบปลายภาควันไหน')}")
+    print(f"  'ลงทะเบียนยังไง'    → is_calendar: {is_calendar_query('ลงทะเบียนยังไง')}")
+    print(f"  'จ่ายค่าเทอมยังไง'  → is_calendar: {is_calendar_query('จ่ายค่าเทอมยังไง')}")
+    print(f"\n  Template:\n{get_calendar_redirect_template()}")

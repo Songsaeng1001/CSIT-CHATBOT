@@ -181,6 +181,14 @@ SPECIFIC_UNIT_KEYWORDS = [
 ]
 
 
+def is_specific_unit(text: str) -> bool:
+    """True ถ้าข้อความเกี่ยวกับหน่วยงาน/บริการเฉพาะ (สหกิจ/ทุน/ฝึกงาน)
+    คาดหวังว่า `text` ผ่าน normalize_query มาแล้ว (ตรงกับที่ classify_query ใช้)
+    ใช้ร่วมกันทั้ง retriever (staff gate) และ main.py (กัน route contact ลัดวงจร)
+    """
+    return any(kw in text for kw in SPECIFIC_UNIT_KEYWORDS)
+
+
 # ═══════════════════════════════════════════════════════
 # 0. Query Resolvers (ก่อน classify)
 # ═══════════════════════════════════════════════════════
@@ -286,8 +294,7 @@ def classify_query(question: str) -> QueryAnalysis:
     # ถ้าเป็นหน่วยงานเฉพาะ (สหกิจ/ทุน/ฝึกงาน) ที่มีผู้ติดต่อของตัวเอง
     # → ไม่ดึงเจ้าหน้าที่ทั่วไป (เฟิร์น/โอ๊ต) ปล่อยให้ Chroma ดึงผู้ติดต่อเฉพาะมาแทน
     has_staff_kw = fuzzy_contains(normalized, STAFF_KEYWORDS, min_match_ratio=0.75)
-    is_specific_unit = any(kw in normalized for kw in SPECIFIC_UNIT_KEYWORDS)
-    if has_staff_kw and not is_specific_unit:
+    if has_staff_kw and not is_specific_unit(normalized):
         analysis.sources_to_use.append("sqlite_staff")
 
     # ─── 3. ตรวจหาตัวเลข + บริบทคำนวณ ───
@@ -317,6 +324,11 @@ def classify_query(question: str) -> QueryAnalysis:
             analysis.entities["gpa_status"] = float(gpa_match.group(1))
             analysis.entities["semesters"] = int(sem_match.group(1))
             analysis.sources_to_use.append("rule_status")
+
+    # ─── 3.8 ปฏิทินการศึกษา redirect ───
+    if rules.is_calendar_query(normalized):
+        analysis.sources_to_use.append("calendar_redirect")
+        return analysis  # หยุดทันที
 
     # ─── 3.9 กยศ. redirect ───
     if rules.is_loan_query(normalized):
@@ -578,6 +590,12 @@ def retrieve_context(
         context.rule_results.extend(result)
         context.sources_used.append("Rule/status")
 
+    # Calendar redirect → return ทันที
+    if "calendar_redirect" in analysis.sources_to_use:
+        context.rule_results.append(rules.get_calendar_redirect_template())
+        context.sources_used.append("Rule/calendar_redirect")
+        return context
+
     # Loan redirect → return ทันที
     if "loan_redirect" in analysis.sources_to_use:
         template = rules.get_loan_redirect_template()
@@ -680,3 +698,28 @@ if __name__ == "__main__":
         )
     print("-" * 70)
     print("🎉 ผ่านทั้งหมด" if all_pass else "⚠️  มีเคสไม่ผ่าน เช็ก keyword list")
+
+    print("\n" + "=" * 70)
+    print("🧪 ทดสอบ Calendar redirect (วัน/กำหนดการ → ปฏิทินการศึกษา)")
+    print("=" * 70)
+    # (query, ควร redirect ไปปฏิทินไหม)
+    calendar_tests = [
+        ("เปิดเทอมวันไหน", True),  # ปฏิทินตรง ๆ
+        ("ปิดเทอมเมื่อไหร่", True),  # ปฏิทินตรง ๆ
+        ("ปฏิทินการศึกษา", True),  # ปฏิทินตรง ๆ
+        ("ลงทะเบียนเรียนวันไหน", True),  # หัวข้อ + เวลา
+        ("สอบปลายภาควันไหน", True),  # หัวข้อ + เวลา
+        ("จ่ายค่าเทอมภายในวันไหน", True),  # หัวข้อ + เวลา (เดดไลน์)
+        ("ลงทะเบียนเรียนยังไง", False),  # หัวข้อแต่ถามวิธี → ปล่อยไป RAG
+        ("จ่ายค่าเทอมยังไง", False),  # หัวข้อแต่ถามวิธี → ปล่อยไป RAG
+        ("nu7 คืออะไร", False),  # คนละเรื่อง
+    ]
+    cal_pass = True
+    for q, expect in calendar_tests:
+        got = rules.is_calendar_query(normalize_query(q))
+        ok = got == expect
+        cal_pass = cal_pass and ok
+        mark = "✅" if ok else "❌"
+        print(f"{mark} '{q}' → calendar={got} (คาดหวัง {expect})")
+    print("-" * 70)
+    print("🎉 ผ่านทั้งหมด" if cal_pass else "⚠️  มีเคสไม่ผ่าน เช็ก keyword list")

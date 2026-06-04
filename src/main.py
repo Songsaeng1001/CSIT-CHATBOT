@@ -43,11 +43,17 @@ from src.config import (
     APP_ENV,
     N8N_WEBHOOK_LOG,
 )
-from src.chat import answer
+from src.chat import answer, NO_ANSWER
 from src.normalizer import normalize_query
+from src.retriever import is_specific_unit
 
 from src.database import sqlite_db
-from src.database.rules import is_loan_query, get_loan_redirect_template
+from src.database.rules import (
+    is_loan_query,
+    get_loan_redirect_template,
+    is_calendar_query,
+    get_calendar_redirect_template,
+)
 from src.database.memory import init_memory, prune, get_history, add_message
 from src.database.chat_log import init_chat_log, log_chat
 
@@ -179,6 +185,16 @@ def route_message(user_message: str, history: Optional[list] = None):
         logger.info("🏦 Route: loan_text")
         template = get_loan_redirect_template()
         return [TextMessage(text=template)], "loan_redirect", True
+
+    # 1.2) ปฏิทินการศึกษา (วันเปิด-ปิดเทอม/ลงทะเบียน/สอบ/ชำระเงิน) → redirect
+    #      วันที่เปลี่ยนทุกเทอม เลยชี้ไปแหล่งทางการแทนการเดา/เก็บใน KB
+    if is_calendar_query(normalized):
+        logger.info("📅 Route: calendar_redirect")
+        return (
+            [TextMessage(text=get_calendar_redirect_template())],
+            "calendar_redirect",
+            True,
+        )
     
     # 1.5) คำร้อง NU Forms ทั้งหมด → SQLite
     if (("คำร้อง" in normalized) or ("form" in normalized.lower())
@@ -228,8 +244,12 @@ def route_message(user_message: str, history: Optional[list] = None):
                     return [TextMessage(text=text)], "instructor", True
             break
 
-    # 3) ติดต่อ/เจ้าหน้าที่ → ข้อความคงที่
-    if any(kw in user_message for kw in CONTACT_KEYWORDS):
+    # 3) ติดต่อ/เจ้าหน้าที่ทั่วไป → ข้อความคงที่ (การ์ดพี่เฟิร์น)
+    #    ยกเว้นหน่วยงาน/บริการเฉพาะ (สหกิจ/ทุน/ฝึกงาน) ที่มีผู้ติดต่อของตัวเอง
+    #    → ปล่อยตกไป RAG (ข้อ 4) ให้ดึงผู้ติดต่อเฉพาะจาก Chroma แทน
+    #    (กันเคส "สหกิจติดต่อใคร" เด้งมาได้พี่เฟิร์นผิด ๆ — ใช้ is_specific_unit
+    #     ตัวเดียวกับ staff gate ใน retriever)
+    if any(kw in user_message for kw in CONTACT_KEYWORDS) and not is_specific_unit(normalized):
         logger.info("📞 Route: contact_text")
         return (
             [
@@ -246,13 +266,12 @@ def route_message(user_message: str, history: Optional[list] = None):
             True,
         )
 
-    # 4) อื่น ๆ → RAG (ส่ง history เข้าไปให้ resolve_vague_query/answer)
+    # 4) อื่น ๆ → RAG (ส่ง history ให้ answer ใช้เกลาคำถาม + ตอบต่อเนื่อง)
     response = answer(user_message, verbose=False, history=history)
 
-    if len(response) > 4900:
-        response = response[:4900] + "...\n\n📞 ติดต่อเพิ่มเติม: 055-963262"
-
-    if not response or "ไม่มีข้อมูล" in response or len(response.strip()) == 0:
+    # ตอบไม่ได้ → answer() คืน NO_ANSWER (sentinel)
+    # ไม่ต้องเดาจาก substring "ไม่มีข้อมูล" อีก กันเคสตอบเองแล้วติด answered=True
+    if response == NO_ANSWER or not response or not response.strip():
         logger.info("❓ Route: no_context_text")
         return (
             [
@@ -267,6 +286,10 @@ def route_message(user_message: str, history: Optional[list] = None):
             "RAG",
             False,
         )
+
+    # ตอบได้ — ตัดความยาวกัน LINE limit (สูงสุด ~5000 ตัว)
+    if len(response) > 4900:
+        response = response[:4900] + "...\n\n📞 ติดต่อเพิ่มเติม: 055-963262"
 
     # หมายเหตุ: route_message ไม่เซฟ memory เอง — การเซฟอยู่ใน webhook handler
     # (ที่ซึ่งมี user_id จริง) เพื่อแยกหน้าที่ให้ชัด
@@ -393,6 +416,23 @@ async def line_webhook(
                 # log เคสที่ระบบล่ม/quota หมด แยกเป็น route='error'
                 # (user_id / user_message มีค่าจริงในขอบเขตนี้)
                 log_chat(user_id, user_message, "", "error", False)
+
+                # ── ยิง alert เคส error/quota ไป n8n ด้วย ──
+                # เดิมพลาดไป → error ไม่เคยเข้า n8n alert
+                # ใช้ create_task แบบ fire-and-forget ให้เหมือน happy path
+                # (ไม่หน่วงการส่งข้อความ fallback กลับ user)
+                # ถ้าต้องการรับประกันว่า alert ส่งจริงก่อน handler จบ
+                # เปลี่ยนเป็น `await send_log_to_n8n(...)` ได้ แต่จะเพิ่ม
+                # latency สูงสุด ~5s ตาม timeout ของ httpx
+                asyncio.create_task(
+                    send_log_to_n8n(
+                        user_id=user_id,
+                        question=user_message,
+                        answer_text="",
+                        route="error",
+                        answered=False,
+                    )
+                )
 
                 # Fallback — ส่ง error message ธรรมดา (ไม่เซฟ memory เทิร์นที่พัง)
                 try:

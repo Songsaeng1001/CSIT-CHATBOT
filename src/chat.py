@@ -16,6 +16,19 @@ from src.config import GOOGLE_API_KEY, PROJECT_ROOT
 from src.database import vector_db
 
 
+# ─── Sentinel: ตอบไม่ได้ ───────────────────────────
+# answer() จะคืนค่านี้เมื่อค้น context ไม่เจอ (แทนการคืนข้อความไทยตรง ๆ)
+# ผู้เรียก (CLI main / LINE webhook) เป็นคนตัดสินใจว่าจะโชว์ข้อความอะไร
+# และตั้ง answered=False เอง → ไม่ต้องเดาด้วยการเช็ก substring ในคำตอบอีก
+NO_ANSWER = "__NO_ANSWER__"
+
+# ข้อความสำรองมาตรฐานตอนตอบไม่ได้ (ใช้ฝั่ง CLI; LINE มีข้อความของตัวเอง)
+NO_ANSWER_MESSAGE = (
+    "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ "
+    "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ"
+)
+
+
 # ─── Logging unanswered questions ──────────────────
 def log_unanswered_question(question: str):
     """บันทึกคำถามที่น้องซีทีตอบไม่ได้"""
@@ -129,6 +142,11 @@ def rewrite_query(question, history=None):
 
 
 def answer(question, verbose=False, history=None):
+    """ตอบคำถาม — คืนข้อความคำตอบ หรือคืน NO_ANSWER (sentinel) ถ้าตอบไม่ได้
+
+    ผู้เรียกต้องเช็ก `response == NO_ANSWER` เองเพื่อตั้ง answered flag
+    และเลือกข้อความสำรองที่จะแสดง (ดู NO_ANSWER_MESSAGE สำหรับค่า default)
+    """
     history = history or []
     from src.retriever import retrieve_context
 
@@ -144,13 +162,10 @@ def answer(question, verbose=False, history=None):
                 print(f"🔎 rewrite: '{search_query}' → '{rewritten}'")
             context = retrieve_context(rewritten, verbose=verbose, history=history)
 
-    # 3) ยังไม่เจออีก = ตอบไม่ได้
+    # 3) ยังไม่เจออีก = ตอบไม่ได้ → คืน sentinel (ผู้เรียกจัดการข้อความ + answered เอง)
     if not context.has_any():
         log_unanswered_question(question)
-        return (
-            "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ "
-            "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ"
-        )
+        return NO_ANSWER
 
     context_text = context.to_prompt_text()
     history_text = _history_text(history)
@@ -239,6 +254,9 @@ def main():
             print("\n💭 กำลังคิด...", end="", flush=True)
             try:
                 response = answer(user_input, verbose=verbose, history=list(_history))
+                # แปลง sentinel เป็นข้อความที่อ่านได้ (อย่าโชว์ "__NO_ANSWER__")
+                if response == NO_ANSWER:
+                    response = NO_ANSWER_MESSAGE
                 print("\r" + " " * 20 + "\r", end="")
                 print(f"💬 น้องซีที: {response}")
                 _history.append({"role": "user", "content": user_input})
