@@ -272,10 +272,13 @@ def classify_query(question: str) -> QueryAnalysis:
     has_instructor_kw = fuzzy_contains(
         normalized, INSTRUCTOR_KEYWORDS, min_match_ratio=0.75
     )
+    colloquial_teacher = re.search(r"จาร(?:ย์)?[ก-๙]", normalized)
     if has_instructor_kw:
         name_patterns = [
             r"อาจารย์([ก-๙a-zA-Z]+)",
             r"อาจาร([ก-๙a-zA-Z]+)",
+            r"จารย์([ก-๙a-zA-Z]+)",
+            r"จาร([ก-๙a-zA-Z]+)",
             r"ผศ\.?\s*ดร\.?\s*([ก-๙]+)",
             r"รศ\.?\s*ดร\.?\s*([ก-๙]+)",
             r"อ\.\s*([ก-๙]+)",
@@ -421,6 +424,10 @@ def fetch_from_sqlite_forms(code: Optional[str]) -> list[str]:
         text += f"\n  ใช้สำหรับ: {form['purpose']}"
     if form.get("fee"):
         text += f"\n  ค่าธรรมเนียม: {form['fee']}"
+    # ── เพิ่ม: แนบลิงก์ระบบคำร้องออนไลน์เข้า context ทุกครั้งที่เจอฟอร์ม ──
+    text += (
+        "\n  ยื่นคำร้องออนไลน์ที่ระบบคำร้อง REG: https://reg4.nu.ac.th/manual/1.man-user/2.web/MAN_UW-NU67-REG-1-7.RequestOnline-Dorm.pdf"
+    )
 
     return [text]
 
@@ -489,7 +496,7 @@ def check_status(gpa: float, semesters: int) -> list[str]:
 # ═══════════════════════════════════════════════════════
 
 
-def fetch_from_chroma(query: str, k: int = 3) -> list[str]:
+def fetch_from_chroma(query: str, k: int = 5) -> list[str]:
     """ดึง chunks จาก Chroma"""
     normalized = normalize_query(query)
     results = vector_db.search(normalized, k=k)
@@ -662,6 +669,8 @@ if __name__ == "__main__":
         "พี่เฟิร์นเบอร์โทรอะไร",
         "Resume กี่หน้า",
         "กยศ. ต้องทำยังไง",
+        "จารสัญญาอยู่ไหน",
+        "จารย์วินัยห้องอะไร",
     ]
     for q in normal_tests:
         print(f"\n❓ {q}")
@@ -692,10 +701,7 @@ if __name__ == "__main__":
         ok = got == expect
         all_pass = all_pass and ok
         mark = "✅" if ok else "❌"
-        print(
-            f"{mark} '{q}' → sqlite_staff={got} "
-            f"(คาดหวัง {expect})"
-        )
+        print(f"{mark} '{q}' → sqlite_staff={got} " f"(คาดหวัง {expect})")
     print("-" * 70)
     print("🎉 ผ่านทั้งหมด" if all_pass else "⚠️  มีเคสไม่ผ่าน เช็ก keyword list")
 

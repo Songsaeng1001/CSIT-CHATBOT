@@ -5,6 +5,7 @@ Interactive Chat กับน้องซีที
 รัน: python -m src.chat
 ออก: พิมพ์ 'quit', 'exit', หรือ 'q' หรือกด Ctrl+C
 """
+
 import re
 import datetime
 from pathlib import Path
@@ -14,7 +15,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config import GOOGLE_API_KEY, PROJECT_ROOT
 from src.database import vector_db
-
 
 # ─── Sentinel: ตอบไม่ได้ ───────────────────────────
 # answer() จะคืนค่านี้เมื่อค้น context ไม่เจอ (แทนการคืนข้อความไทยตรง ๆ)
@@ -45,8 +45,8 @@ def log_unanswered_question(question: str):
 
 def _add_space_th_en(text: str) -> str:
     """แทรกเว้นวรรคระหว่างอังกฤษ/ตัวเลข กับไทย เช่น NU6คือ → NU6 คือ (ฟรี ไม่ใช้ LLM)"""
-    text = re.sub(r'([A-Za-z0-9])([\u0e00-\u0e7f])', r'\1 \2', text)
-    text = re.sub(r'([\u0e00-\u0e7f])([A-Za-z0-9])', r'\1 \2', text)
+    text = re.sub(r"([A-Za-z0-9])([\u0e00-\u0e7f])", r"\1 \2", text)
+    text = re.sub(r"([\u0e00-\u0e7f])([A-Za-z0-9])", r"\1 \2", text)
     return text
 
 
@@ -58,14 +58,33 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' ผู้ช่
 1. ตอบเป็นภาษาไทยที่สุภาพ เป็นกันเอง ใช้คำลงท้าย "ค่ะ"
 2. ตอบจาก context ที่ให้เท่านั้น ห้ามเดา
 3. ถ้าไม่มีข้อมูลใน context ให้บอกตรงๆ และแนะนำให้ติดต่อภาควิชา
-4. ตอบสั้น กระชับ ตรงประเด็น (1-3 ประโยค)
-5. ถ้ามีเบอร์โทร อีเมล หรือลิงก์ ให้แสดงด้วย
+4. ความยาวและรูปแบบ: คำตอบทั่วไปให้สั้น 1-3 ประโยค
+   ถ้าคำตอบเป็นรายการหลายข้อ หรือเป็นลำดับหลายขั้นตอน ห้ามยัดรวมเป็นประโยคเดียว
+   ให้แตกเป็นข้อ ๆ โดยขึ้นบรรทัดใหม่ทุกข้อ — รายการที่ไม่เรียงลำดับขึ้นต้นด้วย
+   เครื่องหมาย • ส่วนขั้นตอนที่ต้องทำตามลำดับให้ขึ้นต้นด้วยเลข 1. 2. 3.
+   ใช้การขึ้นบรรทัดใหม่จริงเท่านั้น ห้ามใช้สัญลักษณ์จัดรูปแบบของ Markdown
+   (เช่น ดอกจัน ชาร์ป หรือขีดกลาง) เพราะ LINE จะแสดงเป็นตัวอักษรดิบ ไม่จัดให้
+5. ถ้าใน context มีเบอร์โทร อีเมล หรือลิงก์ (URL) ที่เกี่ยวกับคำถาม
+   ต้องคัดลอกมาแสดงในคำตอบให้ครบถ้วนเสมอ ห้ามละ ห้ามย่อ ห้ามดัดแปลง URL
+   ถ้าในส่วนของโครงสร้างหลักสูตรทุกครั้งต้องแนบลิงก์เสมอ
 6. สามารถใช้ emoji ได้บ้างเพื่อความเป็นมิตร แต่อย่ามากเกินไป
 7. ห้ามเดาข้อมูลที่ไม่มีใน context (เช่น ชื่อเล่น เบอร์โทร ฯลฯ)
    ถ้าไม่มีข้อมูล ให้ตอบเฉพาะข้อมูลที่มีจริง
 8. ถ้าคำถามเกี่ยวกับหน่วยงาน/บริการเฉพาะ (เช่น สหกิจศึกษา ทุนการศึกษา ฝึกงาน)
    และใน context มีผู้ติดต่อของหน่วยงานนั้นโดยตรง
    ให้แสดงเฉพาะผู้ติดต่อของหน่วยงานนั้น ห้ามแสดงเจ้าหน้าที่ทั่วไปของภาควิชา
+9. ในกรณีที่ตอบเกี่ยวกับ nu ฟอร์มต่าง ๆจะต้องแนบลิงก์คู่มือการใช้งานระบบคำร้องออนไลน์เสมอ
+ตัวอย่างการจัดรูปแบบรายการ:
+ถาม: "resume มีอะไรบ้าง"
+ตอบ:
+Resume ที่ดีควรมี 7 ส่วนค่ะ 😊
+1. รูปถ่าย
+2. ข้อมูลส่วนตัว
+3. ข้อมูลทางการศึกษา
+4. ทักษะความสามารถ
+5. ประสบการณ์การทำงาน
+6. จุดมุ่งหมายในการทำงาน
+7. บุคคลอ้างอิง
 """
 
 
@@ -127,10 +146,12 @@ def rewrite_query(question, history=None):
     user_content += f"คำถามล่าสุด: {question}"
 
     try:
-        resp = get_llm().invoke([
-            SystemMessage(content=REWRITE_PROMPT),
-            HumanMessage(content=user_content),
-        ])
+        resp = get_llm().invoke(
+            [
+                SystemMessage(content=REWRITE_PROMPT),
+                HumanMessage(content=user_content),
+            ]
+        )
         cleaned = resp.content.strip().strip('"').strip("'").strip()
         # safety: ว่าง หรือยาวผิดปกติ (LLM หลุดไปตอบ) → ใช้ regex normalize
         if not cleaned or len(cleaned) > max(len(question) * 5, 200):
@@ -139,6 +160,13 @@ def rewrite_query(question, history=None):
     except Exception as e:
         print(f"⚠️  rewrite พลาด ใช้คำถามเดิม: {e}")
         return _add_space_th_en(question)
+
+
+def _strip_markdown(text: str) -> str:
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # **ตัวหนา**
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)\*", r"\1", text)  # *เอียง*
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)  # # หัวข้อ
+    return text
 
 
 def answer(question, verbose=False, history=None):
@@ -176,11 +204,13 @@ def answer(question, verbose=False, history=None):
         user_message += f"""การสนทนาก่อนหน้า:\n{history_text}\n\n---\n"""
     user_message += f"คำถามจากนิสิต: {question}"
 
-    response = get_llm().invoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_message),
-    ])
-    return response.content
+    response = get_llm().invoke(
+        [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_message),
+        ]
+    )
+    return _strip_markdown(response.content)
 
 
 def print_welcome():
@@ -226,6 +256,7 @@ def main():
 
     verbose = False
     from collections import deque
+
     _history = deque(maxlen=6)
     while True:
         try:
@@ -244,6 +275,7 @@ def main():
                 continue
             if cmd == "/clear":
                 import os
+
                 os.system("clear")
                 print_welcome()
                 continue

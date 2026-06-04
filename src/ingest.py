@@ -18,20 +18,22 @@ from src.config import KNOWLEDGE_DIR
 from src.database import vector_db
 
 
-# ─── ตั้งค่าการ Split ─────────────────────────
-CHUNK_SIZE = 500        # ตัวอักษรต่อ chunk
-CHUNK_OVERLAP = 80      # ส่วนซ้อนทับกัน
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 
-# Separators ที่เหมาะกับภาษาไทย
-SEPARATORS = [
-    "\n## ",       # หัวข้อใหญ่
-    "\n### ",      # หัวข้อย่อย
-    "\n\n",        # paragraph
-    "\n",          # บรรทัด
-    "。",          # จุดญี่ปุ่น (เผื่อ)
-    " ",           # ช่องว่าง
-    "",            # ตัวอักษร (fallback)
+CHUNK_SIZE = 1000        # เพิ่มจาก 500 — bge-m3 รับยาวได้ การหั่นเล็กคือเสียของ
+CHUNK_OVERLAP = 120
+
+HEADERS_TO_SPLIT_ON = [
+    ("#", "h1"),
+    ("##", "h2"),
+    ("###", "h3"),
 ]
+
+# header จัดการโดย MarkdownHeaderTextSplitter แล้ว เหลือแค่ย่อหน้า/บรรทัด
+SEPARATORS = ["\n\n", "\n", "。", " ", ""]
 
 
 def load_documents():
@@ -69,39 +71,52 @@ def load_documents():
 
 
 def split_documents(documents):
-    """แบ่งเอกสารเป็น chunks เล็กๆ"""
+    """แบ่งเอกสารโดยรักษาหัวข้อ markdown ติดไปกับทุก chunk"""
     print()
     print("=" * 60)
-    print(f"✂️  ตัด chunks (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})")
+    print(f"✂️  ตัด chunks แบบ header-aware (size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})")
     print("=" * 60)
-    
-    splitter = RecursiveCharacterTextSplitter(
+
+    md_splitter = MarkdownHeaderTextSplitter(
+        headers_to_split_on=HEADERS_TO_SPLIT_ON,
+        strip_headers=False,   # เก็บบรรทัดหัวข้อไว้ใน content ด้วย
+    )
+    char_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
         separators=SEPARATORS,
         length_function=len,
-        is_separator_regex=False,
     )
-    
-    chunks = splitter.split_documents(documents)
-    
-    print(f"✅ ได้ทั้งหมด {len(chunks)} chunks")
-    
-    # สถิติขนาด chunk
+
+    chunks = []
+    for doc in documents:
+        source = doc.metadata.get("source", "?")
+        # 1) ตัดตามหัวข้อก่อน → แต่ละ section พก h1/h2/h3 ใน metadata
+        sections = md_splitter.split_text(doc.page_content)
+        for s in sections:
+            s.metadata["source"] = source   # md splitter ไม่พก source มาเอง
+        # 2) section ที่ยังยาวเกิน ค่อยหั่นย่อย (header ใน metadata ยังอยู่)
+        sized = char_splitter.split_documents(sections)
+        # 3) เติม "เส้นทางหัวข้อ" ไว้ต้น content ให้ embedding เห็นบริบท
+        #    เช่น "[หลักสูตร CS > ชั้นปีที่ 2 > ภาคการศึกษาที่ 1]"
+        for c in sized:
+            path = " > ".join(
+                c.metadata[k] for k in ("h1", "h2", "h3") if c.metadata.get(k)
+            )
+            if path and path not in c.page_content[:len(path) + 5]:
+                c.page_content = f"[{path}]\n{c.page_content}"
+        chunks.extend(sized)
+
     sizes = [len(c.page_content) for c in chunks]
-    avg = sum(sizes) // len(sizes)
-    print(f"   ขนาดเฉลี่ย: {avg} ตัวอักษร")
-    print(f"   เล็กสุด: {min(sizes)} | ใหญ่สุด: {max(sizes)}")
-    
-    # นับ chunks ต่อไฟล์
+    print(f"✅ ได้ทั้งหมด {len(chunks)} chunks")
+    print(f"   ขนาดเฉลี่ย: {sum(sizes)//len(sizes)} | เล็กสุด {min(sizes)} | ใหญ่สุด {max(sizes)}")
+
     from collections import Counter
-    file_counts = Counter(
-        Path(c.metadata["source"]).name for c in chunks
-    )
-    print("\n   📊 จำนวน chunks ต่อไฟล์:")
-    for filename, count in sorted(file_counts.items()):
-        print(f"      {filename:30s} {count} chunks")
-    
+    file_counts = Counter(Path(c.metadata["source"]).name for c in chunks)
+    print("\n   📊 chunks ต่อไฟล์:")
+    for fn, ct in sorted(file_counts.items()):
+        print(f"      {fn:30s} {ct} chunks")
+
     return chunks
 
 
