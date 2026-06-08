@@ -32,6 +32,9 @@ from linebot.v3.messaging import (
     MessagingApi,
     ReplyMessageRequest,
     TextMessage,
+    QuickReply,        # เพิ่ม
+    QuickReplyItem,    # เพิ่ม
+    MessageAction,     # เพิ่ม
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
@@ -43,6 +46,7 @@ from src.config import (
     APP_ENV,
     N8N_WEBHOOK_LOG,
 )
+from src.quick_replies import quick_reply_for
 from src.chat import answer, NO_ANSWER
 from src.normalizer import normalize_query
 from src.retriever import is_specific_unit
@@ -56,6 +60,8 @@ from src.database.rules import (
 )
 from src.database.memory import init_memory, prune, get_history, add_message
 from src.database.chat_log import init_chat_log, log_chat
+
+
 
 # ─── Logging ──────────────────────────────────────
 logging.basicConfig(
@@ -130,6 +136,24 @@ LIST_ALL_KEYWORDS = [
     "ทั้งหมด", "ทุกคน", "ทุกท่าน", "รายชื่อ",
     "มีใครบ้าง", "มีอะไรบ้าง", "ทุกอัน", "ทุกรายการ",
 ]
+GREETING_KEYWORDS = [
+    "สวัสดี", "หวัดดี", "ดีครับ", "ดีค่ะ", "ดีคับ", "ดีจ้า",
+    "hello", "hi", "hey", "ทักทาย", "ว่าไง",
+]
+
+GREETING_RESPONSE = (
+    "สวัสดีค่ะ 😊 น้องซีทีเป็นผู้ช่วยตอบคำถามของภาควิชา CSIT ม.นเรศวรค่ะ\n"
+    "ถามได้เลยนะคะ เช่น เรื่องการลงทะเบียน เกียรตินิยม ค่าปรับ "
+    "หรือเลือกจากเมนูด้านล่างก็ได้ค่ะ"
+)
+
+
+def _is_greeting(text: str) -> bool:
+    """ข้อความสั้น ๆ ที่เป็นคำทักทายล้วน ๆ (จำกัดความยาวกัน false positive)"""
+    t = text.strip().lower()
+    if not t or len(t) > 20:
+        return False
+    return any(kw in t for kw in GREETING_KEYWORDS)
 
 def _wants_list_all(text: str) -> bool:
     return any(kw in text for kw in LIST_ALL_KEYWORDS)
@@ -169,6 +193,71 @@ async def send_log_to_n8n(
     except Exception as e:
         logger.warning(f"[n8n] ส่ง log ไม่สำเร็จ: {e}")
 
+# คำนำหน้าที่บ่งว่ากำลังถามถึงอาจารย์ (มี = มั่นใจว่าถามถึงคน)
+_TEACHER_PREFIX = re.compile(r"(?:อาจารย์|อาจาร|จารย์|จาร|อ\.|ผศ|รศ|ดร|ที่ปรึกษา)")
+
+# ใช้เฉพาะตอน "พิมพ์ชื่อเฉย ๆ ไม่มีคำนำหน้า" (กันชื่อไปฝังกลางคำอื่น)
+_NAME_BOUNDARY = (
+    r"(?:\s|$|อยู่|ห้อง|สอน|อีเมล|เมล|เบอร์|โทร|ใคร|เป็น|"
+    r"ที่ปรึกษา|ค่ะ|ครับ|คับ)"
+)
+
+
+def _match_instructor_by_name(normalized: str):
+    """หาอาจารย์จากชื่อจริงในข้อความ
+    โหมด 1 (มีคำนำหน้า): ชื่ออยู่ติดหลังคำนำหน้า → ไม่สนคำต่อท้าย
+      จึงทน typo ท้ายชื่อได้ (เช่น 'จารสัญญาอยฺาไหน')
+    โหมด 2 (พิมพ์ชื่อเฉย ๆ): ต้องเจอชื่อ + ขอบเขต กัน false positive
+    """
+    instructors = sqlite_db.list_instructors()
+    if not instructors:
+        return None
+
+    # ── โหมด 1: มีคำนำหน้า → จับชื่อที่ "ติดหลัง" คำนำหน้า ──
+    m = _TEACHER_PREFIX.search(normalized)
+    if m:
+        rest = normalized[m.end():].lstrip(" .")   # เช่น "สัญญาอยฺาไหน"
+        best = None
+        for inst in instructors:
+            first = (inst.get("name") or "").split()[0]
+            if len(first) >= 2 and rest.startswith(first):
+                if best is None or len(first) > len(best[0]):
+                    best = (first, inst)
+        if best:
+            return best[1]
+        # มี prefix แต่ชื่อไม่ติดหลัง (เช่น "อาจารย์ที่สอน X") → ตกไปโหมด 2
+
+    # ── โหมด 2: ไม่มีคำนำหน้า / ชื่อไม่ติดหลัง prefix ──
+    best = None
+    for inst in instructors:
+        first = (inst.get("name") or "").split()[0]
+        if len(first) < 3:
+            continue
+        if re.search(re.escape(first) + _NAME_BOUNDARY, normalized):
+            if best is None or len(first) > len(best[0]):
+                best = (first, inst)
+    return best[1] if best else None
+
+def _attach_quick_reply(messages: list, route: str | None) -> None:
+    """แปะ quick reply ลงข้อความแรก ตาม route ที่ route_message คืนมา (แก้ไข in-place)
+
+    สร้าง TextMessage ใหม่แทนการ mutate object เดิม เพื่อเลี่ยงปัญหา
+    validation/immutability ของ pydantic ใน linebot v3
+    """
+    if not messages or route is None:
+        return
+    qr = quick_reply_for(route)
+    if not qr:
+        return
+    items = [
+        QuickReplyItem(
+            action=MessageAction(label=i["action"]["label"], text=i["action"]["text"])
+        )
+        for i in qr["items"]
+    ]
+    first = messages[0]
+    if isinstance(first, TextMessage):
+        messages[0] = TextMessage(text=first.text, quick_reply=QuickReply(items=items))
 
 # ═══════════════════════════════════════════════════
 # Message Router
@@ -177,9 +266,14 @@ async def send_log_to_n8n(
 
 def route_message(user_message: str, history: Optional[list] = None):
     # อย่าใช้ [] เป็น default (mutable default footgun)
+    
     history = history or []
     normalized = normalize_query(user_message)
 
+    # 0) ทักทาย → ตอบเองด้วยข้อความต้อนรับ (ไม่ต้องเข้า RAG)
+    if _is_greeting(user_message):
+        logger.info("👋 Route: greeting")
+        return [TextMessage(text=GREETING_RESPONSE)], "greeting", True
     # 1) กยศ. → redirect template
     if is_loan_query(normalized):
         logger.info("🏦 Route: loan_text")
@@ -227,22 +321,16 @@ def route_message(user_message: str, history: Optional[list] = None):
                 text = text[:4900] + "..."
             return [TextMessage(text=text)], "instructor_list", True
 
-    # 2) อาจารย์ → SQLite
-    for pattern in INSTRUCTOR_PATTERNS:
-        m = re.search(pattern, normalized)
-        if m:
-            name = m.group(1).strip().split()[0]
-            if len(name) >= 2:
-                inst = sqlite_db.find_instructor(name)
-                if inst:
-                    logger.info(f"👨‍🏫 Route: instructor_text ({name})")
-                    text = (
-                        f"👨‍🏫 {inst['title_short']} {inst['name']}\n"
-                        f"🏢 ห้อง: {inst.get('office', '-')}\n"
-                        f"📧 {inst.get('email', '-')}"
-                    )
-                    return [TextMessage(text=text)], "instructor", True
-            break
+    # 2) อาจารย์ — แมตช์จากชื่อจริงใน SQLite (พิมพ์ชื่อเฉย ๆ ก็ได้ ไม่ต้องมี "อาจารย์")
+    inst = _match_instructor_by_name(normalized)
+    if inst:
+        logger.info(f"👨‍🏫 Route: instructor_text ({inst['name']})")
+        text = (
+            f"👨‍🏫 {inst['title_short']} {inst['name']}\n"
+            f"🏢 ห้อง: {inst.get('office', '-')}\n"
+            f"📧 {inst.get('email', '-')}"
+        )
+        return [TextMessage(text=text)], "instructor", True
 
     # 3) ติดต่อ/เจ้าหน้าที่ทั่วไป → ข้อความคงที่ (การ์ดพี่เฟิร์น)
     #    ยกเว้นหน่วยงาน/บริการเฉพาะ (สหกิจ/ทุน/ฝึกงาน) ที่มีผู้ติดต่อของตัวเอง
@@ -379,6 +467,10 @@ async def line_webhook(
 
             try:
                 messages, route, answered = route_message(user_message, history=history)
+
+                # ── แปะปุ่มชวนถามต่อ เฉพาะตอนตอบได้ (ตอบไม่ได้/error = ไม่ใส่ปุ่ม) ──
+                if answered:
+                    _attach_quick_reply(messages, route)
 
                 line_bot_api.reply_message(
                     ReplyMessageRequest(

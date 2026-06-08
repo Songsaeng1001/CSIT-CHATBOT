@@ -16,6 +16,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.config import GOOGLE_API_KEY, PROJECT_ROOT
 from src.database import vector_db
 
+from dataclasses import dataclass
+from src.quick_replies import topic_from_sources
+
 # ─── Sentinel: ตอบไม่ได้ ───────────────────────────
 # answer() จะคืนค่านี้เมื่อค้น context ไม่เจอ (แทนการคืนข้อความไทยตรง ๆ)
 # ผู้เรียก (CLI main / LINE webhook) เป็นคนตัดสินใจว่าจะโชว์ข้อความอะไร
@@ -57,7 +60,9 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' ผู้ช่
 กฎการตอบ:
 1. ตอบเป็นภาษาไทยที่สุภาพ เป็นกันเอง ใช้คำลงท้าย "ค่ะ"
 2. ตอบจาก context ที่ให้เท่านั้น ห้ามเดา
-3. ถ้าไม่มีข้อมูลใน context ให้บอกตรงๆ และแนะนำให้ติดต่อภาควิชา
+3. ถ้าข้อมูลใน context ไม่เกี่ยวข้องกับคำถาม หรือมีไม่พอที่จะตอบ
+   ให้ตอบกลับเป็นข้อความเดียวว่า __NO_ANSWER__ เท่านั้น ห้ามแต่งข้อความอื่นเพิ่ม
+   (ระบบจะเลือกข้อความขอโทษ + เบอร์ติดต่อให้เอง ไม่ต้องเขียนเอง)
 4. ความยาวและรูปแบบ: คำตอบทั่วไปให้สั้น 1-3 ประโยค
    ถ้าคำตอบเป็นรายการหลายข้อ หรือเป็นลำดับหลายขั้นตอน ห้ามยัดรวมเป็นประโยคเดียว
    ให้แตกเป็นข้อ ๆ โดยขึ้นบรรทัดใหม่ทุกข้อ — รายการที่ไม่เรียงลำดับขึ้นต้นด้วย
@@ -169,20 +174,26 @@ def _strip_markdown(text: str) -> str:
     return text
 
 
-def answer(question, verbose=False, history=None):
-    """ตอบคำถาม — คืนข้อความคำตอบ หรือคืน NO_ANSWER (sentinel) ถ้าตอบไม่ได้
+@dataclass
+class AnswerResult:
+    """ผลลัพธ์การตอบแบบเต็ม (ฝั่ง LINE ใช้ topic เลือกชุด quick reply)"""
+    text: str            # ข้อความพร้อมส่ง (resolve sentinel แล้ว)
+    answered: bool       # True = ตอบจาก context ได้, False = ไม่มีข้อมูล
+    topic: str | None    # หัวข้อสำหรับเลือกปุ่ม (None = ใช้ default)
 
-    ผู้เรียกต้องเช็ก `response == NO_ANSWER` เองเพื่อตั้ง answered flag
-    และเลือกข้อความสำรองที่จะแสดง (ดู NO_ANSWER_MESSAGE สำหรับค่า default)
+
+def answer_full(question, verbose=False, history=None) -> AnswerResult:
+    """เหมือน answer() แต่คืนข้อมูลครบ (text + answered + topic)
+    ใช้ฝั่ง LINE webhook เพื่อแนบ quick reply ตามหมวดที่ตอบจริง
     """
     history = history or []
     from src.retriever import retrieve_context
 
-    # 1) ค้นด้วยคำถามที่ normalize แบบ regex ก่อน (ฟรี ไม่เสีย LLM call)
+    # 1) ค้นด้วยคำถาม normalize แบบ regex ก่อน (ฟรี)
     search_query = _add_space_th_en(question)
     context = retrieve_context(search_query, verbose=verbose, history=history)
 
-    # 2) ถ้าค้นไม่เจอ ค่อยใช้ LLM เกลาคำถามแล้วค้นใหม่ (เสีย LLM call เฉพาะตอนจำเป็น)
+    # 2) ค้นไม่เจอ → ใช้ LLM เกลาคำถามแล้วค้นใหม่
     if not context.has_any():
         rewritten = rewrite_query(question, history)
         if rewritten != search_query:
@@ -190,15 +201,14 @@ def answer(question, verbose=False, history=None):
                 print(f"🔎 rewrite: '{search_query}' → '{rewritten}'")
             context = retrieve_context(rewritten, verbose=verbose, history=history)
 
-    # 3) ยังไม่เจออีก = ตอบไม่ได้ → คืน sentinel (ผู้เรียกจัดการข้อความ + answered เอง)
+    # 3) ยังไม่เจอ = ตอบไม่ได้
     if not context.has_any():
         log_unanswered_question(question)
-        return NO_ANSWER
+        return AnswerResult(text=NO_ANSWER_MESSAGE, answered=False, topic=None)
 
     context_text = context.to_prompt_text()
     history_text = _history_text(history)
 
-    # ── สร้าง prompt (ใช้ question เดิม ไม่ใช่คำที่เกลา) ──
     user_message = f"""ข้อมูลอ้างอิง:\n\n{context_text}\n\n---\n"""
     if history_text:
         user_message += f"""การสนทนาก่อนหน้า:\n{history_text}\n\n---\n"""
@@ -210,7 +220,24 @@ def answer(question, verbose=False, history=None):
             HumanMessage(content=user_message),
         ]
     )
-    return _strip_markdown(response.content)
+    text = _strip_markdown(response.content)
+
+    # LLM ตัดสินเองว่า context ไม่พอจะตอบ → คืนแบบเดียวกับเคสค้นไม่เจอ
+    # (อุดช่องโหว่ "เจอ context แต่ตอบว่าไม่มีข้อมูล" ที่ทำให้ answered=True + โชว์ปุ่ม)
+    if not text.strip() or NO_ANSWER in text:
+        log_unanswered_question(question)
+        return AnswerResult(text=NO_ANSWER_MESSAGE, answered=False, topic=None)
+
+    topic = topic_from_sources(context.sources_used)
+    return AnswerResult(text=text, answered=True, topic=topic)
+
+
+def answer(question, verbose=False, history=None):
+    """(คงพฤติกรรมเดิม) คืน string คำตอบ หรือ NO_ANSWER ถ้าตอบไม่ได้
+    ผู้เรียกเดิม (CLI main / โค้ดอื่นที่เช็ก == NO_ANSWER) ใช้ได้เหมือนเดิม
+    """
+    result = answer_full(question, verbose=verbose, history=history)
+    return result.text if result.answered else NO_ANSWER
 
 
 def print_welcome():
