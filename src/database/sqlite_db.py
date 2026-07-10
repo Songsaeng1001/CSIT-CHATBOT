@@ -40,6 +40,16 @@ def db_session():
         conn.close()
 
 
+def _add_column_if_missing(cur, table: str, column: str, col_type: str):
+    """เพิ่มคอลัมน์ให้ตารางที่มีอยู่แล้ว (migration แบบเบา ๆ)
+    ใช้เผื่อ DB เก่าที่สร้างมาก่อนจะมีคอลัมน์นี้ — CREATE TABLE IF NOT EXISTS
+    เฉย ๆ จะไม่เพิ่มคอลัมน์ใหม่ให้ตารางที่มีอยู่แล้ว จึงต้อง ALTER TABLE เอง
+    """
+    existing = {row[1] for row in cur.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+
+
 def init_database():
     """สร้างตารางทั้งหมด"""
     with db_session() as conn:
@@ -56,6 +66,7 @@ def init_database():
                 email TEXT,
                 office TEXT,
                 specialization TEXT,
+                education TEXT,
                 is_advisor BOOLEAN DEFAULT 1,
                 department TEXT DEFAULT 'CSIT'
             )
@@ -63,6 +74,7 @@ def init_database():
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_instructor_name ON instructors(name)"
         )
+        _add_column_if_missing(cur, "instructors", "education", "TEXT")
 
         # ─── courses ───
         cur.execute("""
@@ -214,6 +226,21 @@ def list_instructors() -> list[dict]:
     with db_session() as conn:
         cur = conn.execute("SELECT * FROM instructors ORDER BY title, name")
         return [dict(r) for r in cur.fetchall()]
+
+
+def update_instructor_education(name: str, education: str) -> bool:
+    """กรอก/แก้ไขวุฒิการศึกษาของอาจารย์ (ค้นด้วยชื่อแบบ LIKE เหมือน find_instructor)
+    ใช้ตอนกรอกข้อมูลจริงทีหลัง เช่น:
+        from src.database.sqlite_db import update_instructor_education
+        update_instructor_education("สัญญา", "ปร.ด. วิทยาการคอมพิวเตอร์ มหาวิทยาลัยนเรศวร")
+    คืน True ถ้าอัปเดตสำเร็จ (เจอแถวที่ตรง), False ถ้าไม่เจอชื่อนั้น
+    """
+    with db_session() as conn:
+        cur = conn.execute(
+            "UPDATE instructors SET education = ? WHERE name LIKE ?",
+            (education, f"%{name}%"),
+        )
+        return cur.rowcount > 0
 
 
 def find_course(code: str) -> Optional[dict]:

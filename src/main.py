@@ -49,7 +49,7 @@ from src.config import (
 from src.quick_replies import quick_reply_for
 from src.chat import answer, NO_ANSWER
 from src.normalizer import normalize_query
-from src.retriever import is_specific_unit
+from src.retriever import is_specific_unit, format_instructor
 
 from src.database import sqlite_db
 from src.database.rules import (
@@ -238,6 +238,32 @@ def _match_instructor_by_name(normalized: str):
                 best = (first, inst)
     return best[1] if best else None
 
+
+# คำที่บ่งบอกว่าถามถึง "ฟิลด์" ไหนของอาจารย์ — ใช้เดา intent เพื่อโชว์การ์ด
+# เฉพาะสิ่งที่ถาม แทนที่จะยัดทุกฟิลด์ (ห้อง/อีเมล/วุฒิ) มาให้ทุกครั้ง
+_EDUCATION_INTENT_KEYWORDS = [
+    "จบจาก", "จบการศึกษา", "เรียนจบ", "สำเร็จการศึกษา",
+    "วุฒิ", "วุฒิการศึกษา", "ปริญญา", "จบป.", "จบ",
+]
+_ROOM_INTENT_KEYWORDS = ["ห้อง", "อยู่ห้องไหน", "ห้องทำงาน", "ห้องไหน", "นั่งอยู่ไหน"]
+_EMAIL_INTENT_KEYWORDS = ["อีเมล", "เมล", "email", "ติดต่อทางเมล"]
+
+
+def _instructor_intent_fields(normalized: str) -> set:
+    """เดาว่าคำถามอยากรู้ field ไหนของอาจารย์บ้าง (ห้อง/อีเมล/วุฒิ)
+    คืน set ว่างถ้าเดาไม่ได้ชัดเจน → ผู้เรียกควรถือว่า "ไม่รู้ intent"
+    แล้วโชว์การ์ดเต็มแบบเดิมไว้ก่อน (safe fallback ดีกว่าโชว์ข้อมูลว่างเปล่า)
+    """
+    wants = set()
+    if any(kw in normalized for kw in _EDUCATION_INTENT_KEYWORDS):
+        wants.add("education")
+    if any(kw in normalized for kw in _ROOM_INTENT_KEYWORDS):
+        wants.add("office")
+    if any(kw in normalized for kw in _EMAIL_INTENT_KEYWORDS):
+        wants.add("email")
+    return wants
+
+
 def _attach_quick_reply(messages: list, route: str | None) -> None:
     """แปะ quick reply ลงข้อความแรก ตาม route ที่ route_message คืนมา (แก้ไข in-place)
 
@@ -325,11 +351,13 @@ def route_message(user_message: str, history: Optional[list] = None):
     inst = _match_instructor_by_name(normalized)
     if inst:
         logger.info(f"👨‍🏫 Route: instructor_text ({inst['name']})")
-        text = (
-            f"👨‍🏫 {inst['title_short']} {inst['name']}\n"
-            f"🏢 ห้อง: {inst.get('office', '-')}\n"
-            f"📧 {inst.get('email', '-')}"
-        )
+        # ใช้ format_instructor() ตัวเดียวกับ retriever.py แทนการ hardcode
+        # การ์ดเอง — เดาก่อนว่าคำถามอยากรู้ field ไหน (ห้อง/อีเมล/วุฒิ) แล้วส่ง
+        # fields ให้ format_instructor() โชว์เฉพาะที่ถาม เช่น ถามแค่ "จบจากไหน"
+        # ก็ไม่ต้องพ่วงห้องทำงาน/อีเมลมาด้วย — ถ้าเดา intent ไม่ออกเลย (wants ว่าง)
+        # fallback โชว์การ์ดเต็มไว้ก่อน กันเคสถามกว้าง ๆ แล้วได้คำตอบว่างเปล่า
+        wants = _instructor_intent_fields(normalized)
+        text = "👨‍🏫 " + format_instructor(inst, fields=wants or None)
         return [TextMessage(text=text)], "instructor", True
 
     # 3) ติดต่อ/เจ้าหน้าที่ทั่วไป → ข้อความคงที่ (การ์ดพี่เฟิร์น)

@@ -189,6 +189,40 @@ def is_specific_unit(text: str) -> bool:
     return any(kw in text for kw in SPECIFIC_UNIT_KEYWORDS)
 
 
+# ─── Bare-name fallback (ไม่มีคำนำหน้า "อาจารย์/ดร./จาร") ───────────────
+# เคส "จรัสศรีจบจากไหน" ไม่มี keyword คำนำหน้าเลย แต่พิมพ์ชื่อจริงอาจารย์ตรง ๆ
+# แคช list ชื่ออาจารย์จาก SQLite ไว้ในตัว process กันยิง DB ทุกคำถาม
+_INSTRUCTOR_FIRST_NAMES_CACHE: Optional[list[str]] = None
+
+
+def _get_instructor_first_names() -> list[str]:
+    """คืนลิสต์ 'ชื่อจริง' (คำแรกของ name) ของอาจารย์ทุกคน — โหลดครั้งเดียวแล้ว cache ไว้"""
+    global _INSTRUCTOR_FIRST_NAMES_CACHE
+    if _INSTRUCTOR_FIRST_NAMES_CACHE is None:
+        try:
+            all_inst = sqlite_db.list_instructors()
+            names = []
+            for inst in all_inst:
+                first = (inst.get("name") or "").split()[0] if inst.get("name") else ""
+                if len(first) >= 3:
+                    names.append(first)
+            _INSTRUCTOR_FIRST_NAMES_CACHE = names
+        except Exception:
+            _INSTRUCTOR_FIRST_NAMES_CACHE = []
+    return _INSTRUCTOR_FIRST_NAMES_CACHE
+
+
+def match_bare_instructor_name(normalized: str) -> Optional[str]:
+    """เช็คว่าในคำถาม (normalize แล้ว) มีชื่อจริงอาจารย์คนไหนโผล่มาตรง ๆ ไหม
+    ใช้เป็น fallback เมื่อไม่มีคำนำหน้า อาจารย์/ดร./ผศ./จาร เลย
+    คืนชื่อจริงที่เจอ (ตัวแรกที่แมตช์) หรือ None
+    """
+    for first_name in _get_instructor_first_names():
+        if first_name in normalized:
+            return first_name
+    return None
+
+
 # ═══════════════════════════════════════════════════════
 # 0. Query Resolvers (ก่อน classify)
 # ═══════════════════════════════════════════════════════
@@ -273,24 +307,43 @@ def classify_query(question: str) -> QueryAnalysis:
         normalized, INSTRUCTOR_KEYWORDS, min_match_ratio=0.75
     )
     colloquial_teacher = re.search(r"จาร(?:ย์)?[ก-๙]", normalized)
-    if has_instructor_kw:
-        name_patterns = [
-            r"อาจารย์([ก-๙a-zA-Z]+)",
-            r"อาจาร([ก-๙a-zA-Z]+)",
-            r"จารย์([ก-๙a-zA-Z]+)",
-            r"จาร([ก-๙a-zA-Z]+)",
-            r"ผศ\.?\s*ดร\.?\s*([ก-๙]+)",
-            r"รศ\.?\s*ดร\.?\s*([ก-๙]+)",
-            r"อ\.\s*([ก-๙]+)",
-        ]
-        for pattern in name_patterns:
-            m = re.search(pattern, normalized)
-            if m:
-                name = m.group(1)
-                name = re.split(r"[\s,]|ห้อง|อีเมล|เบอร์|รหัส", name)[0]
-                if len(name) >= 2:
-                    analysis.entities["instructor_name"] = name
-                break
+
+    # ลองจับชื่อจริงอาจารย์จาก SQLite ก่อนเสมอ (แม่นกว่า regex เพราะไม่โดนคำ
+    # ต่อท้ายเช่น "จบจากที่ไหน"/"สำเร็จการศึกษาจาก" ทำให้ capture เพี้ยน)
+    #
+    # NOTE: บั๊กเดิม — regex [ก-๙a-zA-Z]+ เป็น greedy และ split() มีแค่
+    # "ห้อง/อีเมล/เบอร์/รหัส" เป็น boundary จึงตัดคำท้ายพวก "จบจากที่ไหน"
+    # ไม่ออก ทำให้ name กลายเป็น "เทวินจบจากที่ไหน" ทั้งท่อน แล้ว find_instructor()
+    # หาไม่เจอ (fallback ไปโชว์ list รวมทุกคนแทน ซึ่งไม่มีวุฒิการศึกษา)
+    # → แก้โดยลองจับจากชื่อจริงที่มีอยู่จริงใน DB ก่อนเสมอ ไม่พึ่ง regex capture
+    name_hit = match_bare_instructor_name(normalized)
+
+    if has_instructor_kw or colloquial_teacher or name_hit:
+        if name_hit:
+            analysis.entities["instructor_name"] = name_hit
+        else:
+            # DB match ไม่เจอ (เช่นชื่อพิมพ์เพี้ยนมาก หรือถามรวม ๆ ไม่มีชื่อ)
+            # → fallback ไป regex เดิม ยังดีกว่าไม่มีอะไรเลย
+            name_patterns = [
+                r"อาจารย์([ก-๙a-zA-Z]+)",
+                r"อาจาร([ก-๙a-zA-Z]+)",
+                r"จารย์([ก-๙a-zA-Z]+)",
+                r"จาร([ก-๙a-zA-Z]+)",
+                r"ผศ\.?\s*ดร\.?\s*([ก-๙]+)",
+                r"รศ\.?\s*ดร\.?\s*([ก-๙]+)",
+                r"อ\.\s*([ก-๙]+)",
+            ]
+            for pattern in name_patterns:
+                m = re.search(pattern, normalized)
+                if m:
+                    name = m.group(1)
+                    name = re.split(
+                        r"[\s,]|ห้อง|อีเมล|เบอร์|รหัส|จบ|สำเร็จ|วุฒิ|ปริญญา|สอน",
+                        name,
+                    )[0]
+                    if len(name) >= 2:
+                        analysis.entities["instructor_name"] = name
+                    break
         analysis.sources_to_use.append("sqlite_instructors")
 
     # ─── 2.5 Staff detection ───
@@ -397,14 +450,39 @@ def fetch_from_sqlite_instructors(name: Optional[str]) -> list[str]:
     return results
 
 
-def format_instructor(inst: dict) -> str:
-    """จัดรูปแบบข้อมูลอาจารย์"""
+def format_instructor(inst: dict, fields: Optional[set] = None) -> str:
+    """จัดรูปแบบข้อมูลอาจารย์
+
+    fields: ถ้าระบุ (เช่น {'education'}) จะโชว์ "เฉพาะ" ฟิลด์ที่ขอ (ชื่อโชว์เสมอ)
+            ใช้ตอนรู้ intent ชัดเจนแล้วว่าถามอะไร (เช่น main.py เดาจากคำถามว่า
+            ถามห้อง/อีเมล/วุฒิ) กันการ์ดยัดข้อมูลที่ไม่ได้ถามมาให้
+            None (default) = โชว์ทุกฟิลด์ที่มีข้อมูล (พฤติกรรมเดิม — ใช้ตอนส่งเข้า
+            context ให้ LLM เพราะ LLM เองเลือกสิ่งที่จะพูดจาก context อีกทีอยู่แล้ว)
+
+    วุฒิการศึกษาเก็บใน DB เป็น string เดียวคั่นด้วย " | " ต่อ 1 ใบปริญญา
+    (ดู populate_instructor_education.py) — ตรงนี้แตกเป็นบรรทัด/บูลเลตให้ก่อน
+    ส่งเข้า context เลย เพื่อให้ LLM "คัดลอก" โครงสร้างที่จัดไว้แล้วตามกฎ 2/13
+    ใน chat.py แทนที่จะต้องเดาว่าจะเรียงบรรทัดยังไงเอง (เดิมมันเอาไปเรียบเรียง
+    เป็นพารากราฟยาวก้อนเดียว อ่านยาก)
+    """
+    show_all = fields is None
+    fields = fields or set()
+
     text = f"{inst['title_short']} {inst['name']}"
-    if inst.get("office"):
+    if (show_all or "office" in fields) and inst.get("office"):
         text += f"\n  ห้องทำงาน: {inst['office']}"
-    if inst.get("email"):
+    if (show_all or "email" in fields) and inst.get("email"):
         text += f"\n  อีเมล: {inst['email']}"
-    if inst.get("specialization"):
+    if (show_all or "education" in fields) and inst.get("education"):
+        degrees = [d.strip() for d in inst["education"].split("|") if d.strip()]
+        # ตัดคำซ้ำ "สำเร็จการศึกษาจาก" หน้าทุกบูลเลตออก กันอ่านซ้ำซาก
+        degrees = [re.sub(r"^สำเร็จการศึกษาจาก\s*", "", d) for d in degrees]
+        if len(degrees) > 1:
+            bullet_lines = "\n".join(f"    • {d}" for d in degrees)
+            text += f"\n  วุฒิการศึกษา:\n{bullet_lines}"
+        else:
+            text += f"\n  วุฒิการศึกษา: {degrees[0]}"
+    if (show_all or "specialization" in fields) and inst.get("specialization"):
         text += f"\n  หมายเหตุ: {inst['specialization']}"
     return text
 
@@ -612,7 +690,7 @@ def retrieve_context(
 
     # Chroma — RAG (ใช้ resolved_question ที่ enrich แล้ว)
     if "chroma" in analysis.sources_to_use:
-        chunks = fetch_from_chroma(resolved_question, k=3)
+        chunks = fetch_from_chroma(resolved_question, k=5)
         if chunks:
             context.rag_chunks.extend(chunks)
             context.sources_used.append("Chroma")
