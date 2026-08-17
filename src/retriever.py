@@ -14,8 +14,21 @@ Query Router — วิเคราะห์คำถามและดึง co
     เป็นตัวเดียว retriever จึงรับ "คำถามที่เกลาเสร็จแล้ว" เข้ามาตรง ๆ
     ไม่ยุ่งกับ history ในการสร้างคำค้นอีก
     (history สำหรับ "ใช้ตอบ" ยังอยู่ที่ answer() ใน chat.py เหมือนเดิม)
+
+หมายเหตุ (RAG+KG comparison — เพิ่มใหม่):
+    เพิ่ม source "sqlite_kg_foreign_phd" สำหรับคำถาม multi-hop แบบกวาดอาจารย์
+    ทั้งหมดแล้วกรองด้วยคุณสมบัติ (ตัวอย่าง motivating case: id13 ใน eval_dataset —
+    "อาจารย์ที่ปรึกษาที่จบปริญญาเอกจากต่างประเทศมีใครบ้าง") ซึ่ง RAG อย่างเดียว
+    (vector search top-k) ทำได้ไม่ดีเพราะต้องรวมข้อมูลจากอาจารย์ทั้งหมด ไม่ใช่แค่
+    chunk ที่ similarity สูงสุดไม่กี่อัน — จุดนี้คือ "KG" query แบบง่าย ๆ
+    (structured attribute filter บน SQLite แทนที่จะเป็น dense retrieval)
+
+    ควบคุมด้วย ENABLE_KG (อ่านจาก env var CSIT_ENABLE_KG) เพื่อให้รัน eval
+    เทียบ RAG-only (CSIT_ENABLE_KG=0) vs RAG+KG (ปกติ/ไม่ตั้งอะไร = เปิด) ได้
+    โดยไม่ต้องแก้โค้ด — ดู compare_stats.py workflow ใน session summary ข้อ 3.5
 """
 
+import os
 import re
 from typing import Optional
 from dataclasses import dataclass, field
@@ -66,6 +79,14 @@ class RetrievedContext:
 
         return "\n\n---\n\n".join(sections)
 
+
+# ═══════════════════════════════════════════════════════
+# Config
+# ═══════════════════════════════════════════════════════
+
+# เปิด/ปิด source แบบ KG (structured query) — เปิดโดย default
+# ปิดด้วย env var: CSIT_ENABLE_KG=0  (ใช้ตอนรัน eval baseline "RAG-only" เทียบ "RAG+KG")
+ENABLE_KG = os.getenv("CSIT_ENABLE_KG", "1") != "0"
 
 # ═══════════════════════════════════════════════════════
 # Keywords / Patterns
@@ -153,6 +174,10 @@ NUMBER_QUERY_KEYWORDS = [
     "ค่า",
 ]
 
+# รหัสวิชา 6 หลัก ขึ้นต้นด้วยรหัสสาขาที่ภาควิชานี้ใช้จริง (001/002=ศึกษาทั่วไป, 254=CS, 273=IT)
+# ใช้แยกจากตัวเลขอื่น ๆ เช่นเบอร์โทร/รหัสไปรษณีย์ที่ไม่ได้ขึ้นต้นด้วยรหัสพวกนี้
+COURSE_CODE_PATTERN = re.compile(r"\b(?:001|002|254|273)\d{3}\b")
+
 # คำที่บ่งบอกว่าถามขั้นตอน/วิธีการ
 STEP_KEYWORDS = [
     "ขั้นตอน",
@@ -179,6 +204,33 @@ SPECIFIC_UNIT_KEYWORDS = [
     "ทุน",
     "ทุนการศึกษา",
 ]
+
+# ─── KG: คำถาม multi-hop "อาจารย์จบเอกจากต่างประเทศมีใครบ้าง" ───
+# ต้องมีทั้ง "พูดถึงปริญญาเอก" และ "พูดถึงต่างประเทศ (หรือขอเป็นรายชื่อ/ทั้งหมด)"
+# ร่วมกับคำอาจารย์ ถึงจะ trigger — กันไม่ให้คำถามอื่นที่พูดถึงปริญญาเอกเฉย ๆ
+# (เช่น "ต้องจบปริญญาเอกไหมถึงจะเป็นอาจารย์ได้") มาเข้า source นี้ผิด ๆ
+# แบ่งคำบอกวุฒิเอกเป็น 2 ระดับตามความชัดเจน (แก้ 2026-07-23):
+#   STRONG = ระบุปริญญาเอกชัดเจน ไม่กำกวม
+#   WEAK   = สื่อถึงปริญญาเอกได้ แต่ในภาษาไทยอาจหมายถึง "วิชาเอก" ก็ได้
+#            เช่น "อาจารย์จบเอกคอมพิวเตอร์มีใครบ้าง" = จบสาขาวิชาเอกคอมฯ
+#            ไม่ได้ถามเรื่องปริญญาเอกเลย
+#
+# ที่ต้องแยกเพราะพบว่า "จบเอก" เป็นวิธีพูดที่ใช้บ่อยมากแต่เดิมไม่มีในลิสต์
+# ทำให้ "อาจารย์ที่จบเอกต่างประเทศมีกี่ท่าน" หลุดไปเข้า sqlite_instructors แทน KG
+# (ตรวจพบจาก routing_eval — KG recall = 0.67)
+PHD_QUERY_KEYWORDS = [
+    "ปริญญาเอก",
+    "ปร.ด",
+    "ป.เอก",
+    "ดุษฎีบัณฑิต",
+    "phd",
+    "ph.d",
+    "doctorate",
+    "doctoral",
+]
+PHD_WEAK_KEYWORDS = ["จบเอก", "วุฒิเอก", "ระดับเอก", "จบ ป.เอก"]
+FOREIGN_EDU_KEYWORDS = ["ต่างประเทศ", "เมืองนอก", "นอกประเทศ", "abroad"]
+LIST_INTENT_KEYWORDS = ["มีใครบ้าง", "มีกี่คน", "ทุกคน", "รายชื่อ", "กี่ท่าน", "กี่คน"]
 
 
 def is_specific_unit(text: str) -> bool:
@@ -318,7 +370,36 @@ def classify_query(question: str) -> QueryAnalysis:
     # → แก้โดยลองจับจากชื่อจริงที่มีอยู่จริงใน DB ก่อนเสมอ ไม่พึ่ง regex capture
     name_hit = match_bare_instructor_name(normalized)
 
-    if has_instructor_kw or colloquial_teacher or name_hit:
+    # ─── 2.1 KG: อาจารย์จบเอกจากต่างประเทศ (multi-hop, ไม่มีชื่อเจาะจง) ───
+    # ต้องเช็คก่อนเคส single-name เพราะคำถามนี้ไม่มีชื่อคนเจาะจง แต่ถามกวาดทุกคน
+    # ปิด/เปิดด้วย ENABLE_KG (env var CSIT_ENABLE_KG) เพื่อรัน eval เทียบ RAG-only
+    # vs RAG+KG ได้โดยไม่ต้องแก้โค้ด — ดูหมายเหตุหัวไฟล์
+    # สัญญาณ 2 ระดับ — คำที่กำกวม ("จบเอก") ต้องมีคำว่าต่างประเทศมายืนยันด้วย
+    # ไม่รับแค่เจตนาขอรายชื่อ ("มีกี่คน") เพราะ "จบเอกคอมพิวเตอร์มีกี่คน"
+    # ไม่ได้ถามเรื่องปริญญาเอก
+    has_strong_phd = fuzzy_contains(
+        normalized, PHD_QUERY_KEYWORDS, min_match_ratio=0.75
+    )
+    has_weak_phd = fuzzy_contains(normalized, PHD_WEAK_KEYWORDS, min_match_ratio=0.75)
+    has_foreign_edu = fuzzy_contains(
+        normalized, FOREIGN_EDU_KEYWORDS, min_match_ratio=0.75
+    )
+    has_list_intent = fuzzy_contains(
+        normalized, LIST_INTENT_KEYWORDS, min_match_ratio=0.75
+    )
+
+    is_foreign_phd_query = (
+        (has_instructor_kw or colloquial_teacher)
+        and not name_hit
+        and (
+            (has_strong_phd and (has_foreign_edu or has_list_intent))
+            or (has_weak_phd and has_foreign_edu)
+        )
+    )
+
+    if is_foreign_phd_query and ENABLE_KG:
+        analysis.sources_to_use.append("sqlite_kg_foreign_phd")
+    elif has_instructor_kw or colloquial_teacher or name_hit:
         if name_hit:
             analysis.entities["instructor_name"] = name_hit
         else:
@@ -380,6 +461,16 @@ def classify_query(question: str) -> QueryAnalysis:
             analysis.entities["gpa_status"] = float(gpa_match.group(1))
             analysis.entities["semesters"] = int(sem_match.group(1))
             analysis.sources_to_use.append("rule_status")
+
+    # ─── 3.5 รหัสวิชา 6 หลัก (254xxx / 273xxx / 001xxx / 002xxx) ───
+    # bge-m3 (และ dense embedding ทั่วไป) แยกแยะรหัสตัวเลขล้วน ๆ ได้ไม่ดี
+    # ทำให้ similarity score ของ chunk ที่ถูกต้องมักไม่ผ่านเกณฑ์ปกติใน
+    # fetch_from_chroma (score < 0.8) ทั้งที่ chunk นั้นอยู่ใน top-k อยู่แล้ว
+    # → ทำเครื่องหมายไว้ให้ retrieve_context สั่ง fetch_from_chroma
+    #   ผ่อนเกณฑ์ score เฉพาะกรณีนี้ (ดู relax_score ด้านล่าง)
+    course_code_match = COURSE_CODE_PATTERN.search(normalized)
+    if course_code_match:
+        analysis.entities["course_code"] = course_code_match.group(0)
 
     # ─── 3.8 ปฏิทินการศึกษา redirect ───
     if rules.is_calendar_query(normalized):
@@ -450,6 +541,39 @@ def fetch_from_sqlite_instructors(name: Optional[str]) -> list[str]:
     return results
 
 
+def fetch_from_sqlite_kg_foreign_phd() -> list[str]:
+    """ดึงรายชื่ออาจารย์ที่จบปริญญาเอกจากต่างประเทศ (KG-style structured query)
+
+    ต่างจาก fetch_from_sqlite_instructors ตรงที่ไม่ได้ค้นด้วยชื่อคนเดียว แต่กวาด
+    อาจารย์ "ทั้งหมด" แล้วกรองด้วยคุณสมบัติ (education) — งานที่ RAG แบบ vector
+    search top-k ทำได้ไม่ดี เพราะต้องรวมข้อมูลจากทุก entity ไม่ใช่แค่ chunk
+    ที่ similarity สูงสุดไม่กี่อัน (ดู session summary ข้อ 1.5 ปัญหา C)
+
+    ใช้ format_instructor(fields={"education"}) เพื่อโชว์เฉพาะวุฒิ ไม่ยัดข้อมูล
+    อื่นที่ไม่เกี่ยวกับคำถามนี้เข้าไปให้ LLM
+    """
+    matches = sqlite_db.find_foreign_phd_instructors()
+    if not matches:
+        return []
+
+    # ระบุจำนวนไว้ในบรรทัดแรกเสมอ — คำถามกลุ่มนี้มักถามพ่วง "มีกี่คน"
+    # ถ้าไม่บอกจำนวนตรง ๆ LLM ต้องนับเองจากรายชื่อ ซึ่งพลาดได้
+    #
+    # (แก้ 2026-07-24) เดิมข้อความนี้เตือนว่า "heuristic ... อาจไม่ครบ 100%"
+    # ซึ่งตอนนี้ไม่จริงแล้ว เพราะ find_foreign_phd_instructors() เปลี่ยนไปใช้
+    # SQL query บนตาราง instructor_education ที่ seed ครบ 20 ท่านแล้ว
+    # ข้อความเตือนนี้ถูกส่งเข้า context ให้ LLM อ่าน ทำให้บอทตอบแบบออกตัว
+    # ("อาจไม่ครบ") ทั้งที่ข้อมูลครบ — ฉุด Faithfulness ของคำถามกลุ่ม KG โดยตรง
+    summary = (
+        f"อาจารย์ที่ปรึกษาที่จบปริญญาเอกจากต่างประเทศ มีทั้งหมด {len(matches)} ท่าน "
+        f"(กรองจากฐานข้อมูลโครงสร้างของภาควิชา):\n"
+    )
+    for inst in matches:
+        summary += "\n" + format_instructor(inst, fields={"education"})
+
+    return [summary]
+
+
 def format_instructor(inst: dict, fields: Optional[set] = None) -> str:
     """จัดรูปแบบข้อมูลอาจารย์
 
@@ -503,9 +627,7 @@ def fetch_from_sqlite_forms(code: Optional[str]) -> list[str]:
     if form.get("fee"):
         text += f"\n  ค่าธรรมเนียม: {form['fee']}"
     # ── เพิ่ม: แนบลิงก์ระบบคำร้องออนไลน์เข้า context ทุกครั้งที่เจอฟอร์ม ──
-    text += (
-        "\n  ยื่นคำร้องออนไลน์ที่ระบบคำร้อง REG: https://reg4.nu.ac.th/manual/1.man-user/2.web/MAN_UW-NU67-REG-1-7.RequestOnline-Dorm.pdf"
-    )
+    text += "\n  ยื่นคำร้องออนไลน์ที่ระบบคำร้อง REG: https://reg4.nu.ac.th/manual/1.man-user/2.web/MAN_UW-NU67-REG-1-7.RequestOnline-Dorm.pdf"
 
     return [text]
 
@@ -574,14 +696,21 @@ def check_status(gpa: float, semesters: int) -> list[str]:
 # ═══════════════════════════════════════════════════════
 
 
-def fetch_from_chroma(query: str, k: int = 5) -> list[str]:
-    """ดึง chunks จาก Chroma"""
+def fetch_from_chroma(query: str, k: int = 5, relax_score: bool = False) -> list[str]:
+    """ดึง chunks จาก Chroma
+
+    relax_score: ถ้า True จะไม่กรองด้วย score threshold เลย (เอา top-k ทั้งหมด)
+        ใช้กับคำถามรหัสวิชา 6 หลัก (254xxx/273xxx/001xxx/002xxx) เพราะ dense
+        embedding อย่าง bge-m3 แยกแยะรหัสตัวเลขล้วน ๆ ได้ไม่ดี ทำให้ similarity
+        score ของ chunk ที่ถูกต้องมักไม่ผ่านเกณฑ์ปกติ ทั้งที่ chunk นั้น
+        อยู่ใน top-k อยู่แล้ว (ดู classify_query ส่วน 3.5)
+    """
     normalized = normalize_query(query)
     results = vector_db.search(normalized, k=k)
 
     chunks = []
     for doc, score in results:
-        if score < 0.8:  # เข้มขึ้นจาก 1.5 → 0.8 ลด false positive
+        if relax_score or score < 0.8:  # เข้มขึ้นจาก 1.5 → 0.8 ลด false positive
             chunks.append(doc.page_content.strip())
 
     return chunks
@@ -624,6 +753,13 @@ def retrieve_context(
         if data:
             context.sqlite_data.extend(data)
             context.sources_used.append("SQLite/instructors")
+
+    # SQLite — KG: อาจารย์จบเอกต่างประเทศ (multi-hop structured query)
+    if "sqlite_kg_foreign_phd" in analysis.sources_to_use:
+        data = fetch_from_sqlite_kg_foreign_phd()
+        if data:
+            context.sqlite_data.extend(data)
+            context.sources_used.append("SQLite/KG_foreign_phd")
 
     # SQLite — forms
     if "sqlite_forms" in analysis.sources_to_use:
@@ -690,7 +826,8 @@ def retrieve_context(
 
     # Chroma — RAG (ใช้ resolved_question ที่ enrich แล้ว)
     if "chroma" in analysis.sources_to_use:
-        chunks = fetch_from_chroma(resolved_question, k=5)
+        relax = "course_code" in analysis.entities
+        chunks = fetch_from_chroma(resolved_question, k=5, relax_score=relax)
         if chunks:
             context.rag_chunks.extend(chunks)
             context.sources_used.append("Chroma")
@@ -807,3 +944,57 @@ if __name__ == "__main__":
         print(f"{mark} '{q}' → calendar={got} (คาดหวัง {expect})")
     print("-" * 70)
     print("🎉 ผ่านทั้งหมด" if cal_pass else "⚠️  มีเคสไม่ผ่าน เช็ก keyword list")
+
+    print("\n" + "=" * 70)
+    print("🧪 ทดสอบรหัสวิชา 6 หลัก (แก้บั๊ก answered=False กับคำถามรหัสวิชา)")
+    print("=" * 70)
+    # (query, ควรมี course_code entity ไหม)
+    course_code_tests = [
+        ("รหัสรายวิชา 254171 หมายถึงอะไร", True),
+        ("273252 คือวิชาอะไร", True),
+        ("001101 เรียนเรื่องอะไร", True),
+        ("เบอร์โทร 055-963262 ติดต่อใคร", False),  # เบอร์โทร ไม่ใช่รหัสวิชา
+        ("GPA 3.55 ได้เกียรตินิยมอะไร", False),  # ไม่มีรหัสวิชา
+    ]
+    cc_pass = True
+    for q, expect in course_code_tests:
+        analysis = classify_query(q)
+        got = "course_code" in analysis.entities
+        ok = got == expect
+        cc_pass = cc_pass and ok
+        mark = "✅" if ok else "❌"
+        print(f"{mark} '{q}' → course_code detected={got} (คาดหวัง {expect})")
+    print("-" * 70)
+    print("🎉 ผ่านทั้งหมด" if cc_pass else "⚠️  มีเคสไม่ผ่าน เช็ก COURSE_CODE_PATTERN")
+
+    print("\n" + "=" * 70)
+    print("🧪 ทดสอบ KG: อาจารย์จบเอกจากต่างประเทศ (RAG+KG comparison, id13)")
+    print("=" * 70)
+    print(f"ENABLE_KG = {ENABLE_KG} (ตั้งด้วย env var CSIT_ENABLE_KG=0/1)")
+    # (query, ควร trigger sqlite_kg_foreign_phd ไหม เมื่อ ENABLE_KG=True)
+    kg_tests = [
+        ("อาจารย์ที่ปรึกษาที่จบปริญญาเอกจากต่างประเทศมีใครบ้าง", True),
+        ("มีอาจารย์ที่จบปริญญาเอกต่างประเทศกี่คน", True),
+        ("อาจารย์สัญญาจบปริญญาเอกจากที่ไหน", False),  # มีชื่อเจาะจง → ไม่ใช่ KG
+        (
+            "ต้องจบปริญญาเอกไหมถึงจะเป็นอาจารย์ที่ปรึกษาได้",
+            False,
+        ),  # ไม่มี list intent/ต่างประเทศ
+        ("อาจารย์วินัยอยู่ห้องไหน", False),  # คนละเรื่อง
+    ]
+    kg_pass = True
+    for q, expect in kg_tests:
+        analysis = classify_query(q)
+        got = "sqlite_kg_foreign_phd" in analysis.sources_to_use
+        ok = got == expect if ENABLE_KG else got is False
+        kg_pass = kg_pass and ok
+        mark = "✅" if ok else "❌"
+        print(
+            f"{mark} '{q}' → sqlite_kg_foreign_phd={got} (คาดหวัง {expect if ENABLE_KG else False})"
+        )
+    print("-" * 70)
+    print(
+        "🎉 ผ่านทั้งหมด"
+        if kg_pass
+        else "⚠️  มีเคสไม่ผ่าน เช็ก PHD/FOREIGN/LIST keyword list"
+    )

@@ -1,0 +1,436 @@
+[
+  {
+    "id": 1,
+    "question": "หัวหน้าภาควิชา CSIT คือใคร",
+    "type": "instructor_info",
+    "gold_answer": "อาจารย์วุฒิพงษ์ เรือนทอง เป็นหัวหน้าภาควิชา CSIT อีเมล wuttipongr@nu.ac.th ห้องทำงาน SC2-401",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 2,
+    "question": "รองหัวหน้าภาควิชา CSIT มีกี่ท่าน ใครบ้าง",
+    "type": "instructor_info",
+    "gold_answer": "มี 2 ท่าน ได้แก่ ผู้ช่วยศาสตราจารย์ ดร.จันทร์จิรา พยัคฆ์เพศ และผู้ช่วยศาสตราจารย์ ดร.ธนะธร พ่อค้า",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 3,
+    "question": "อาจารย์วินัย วงษ์ไทย อยู่ห้องไหน จบการศึกษาจากที่ไหนบ้าง",
+    "type": "instructor_info",
+    "gold_answer": "ห้องทำงาน SC2-417 จบจาก University of Newcastle Upon Tyne สาขา Computer Science, University of Newcastle Upon Tyne สาขา System Design for Internet Applications และมหาวิทยาลัยนเรศวร สาขาวิทยาการคอมพิวเตอร์",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 4,
+    "question": "อาจารย์เทวินจบจากที่ไหน",
+    "type": "instructor_info",
+    "gold_answer": "ผู้ช่วยศาสตราจารย์เทวิน ธนะวงษ์ จบจากสถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง สาขาวิศวกรรมไฟฟ้า (วศ.บ.) และมหาวิทยาลัยเชียงใหม่ สาขาสถิติ (วท.บ.)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 5,
+    "question": "อีเมลอาจารย์จักรกฤษณ์ เสน่ห์ นมะหุต คืออะไร",
+    "type": "instructor_info",
+    "gold_answer": "chakkrits@nu.ac.th",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 6,
+    "question": "ห้อง SC2-401 มีอาจารย์ท่านใดอยู่บ้าง",
+    "type": "instructor_info",
+    "gold_answer": "อาจารย์ไกรศักดิ์, อาจารย์เกรียงศักดิ์, อาจารย์อดิเรก, และอาจารย์วุฒิพงษ์",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 7,
+    "question": "เจ้าหน้าที่พัสดุภาควิชา CSIT คือใคร ติดต่อยังไง",
+    "type": "instructor_info",
+    "gold_answer": "นางปทุมา แก้วแดง (พี่แมว) ตำแหน่งนักวิชาการพัสดุ โทร 055-963263 อีเมล patumak@nu.ac.th",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 8,
+    "question": "นักวิชาการคอมพิวเตอร์ของภาควิชา CSIT ชื่ออะไร รับผิดชอบเรื่องอะไร",
+    "type": "instructor_info",
+    "gold_answer": "นายธราศักดิ์ ชุนกองฮอ (พี่โอ๊ต) รับผิดชอบระบบคอมพิวเตอร์ เครือข่าย และห้องปฏิบัติการ โทร 055-963230 ห้องทำงาน SC2-110",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 9,
+    "question": "หลักสูตรวิทยาการคอมพิวเตอร์ (CS) ต้องเรียนกี่หน่วยกิตจึงจะจบ",
+    "type": "curriculum_cs",
+    "gold_answer": "ไม่น้อยกว่า 123 หน่วยกิต",
+    "expected_source_file": "curriculum_cs.md"
+  },
+  {
+    "id": 10,
+    "question": "รหัสรายวิชา 254171 หมายความว่าอะไร",
+    "type": "curriculum_cs",
+    "gold_answer": "254 = สาขาวิชาวิทยาการคอมพิวเตอร์, 171 หมายถึงชั้นปีที่ 1 หมวดทั่วไป ลำดับที่ 1 (CS ชั้นปี 1 หมวดทั่วไป ลำดับที่ 1)",
+    "expected_source_file": "curriculum_cs.md"
+  },
+  {
+    "id": 11,
+    "question": "อยากลงสหกิจศึกษาสาขาวิทยาการคอมพิวเตอร์ต้องมีหน่วยกิตสะสมและ GPA เท่าไหร่",
+    "type": "curriculum_cs",
+    "gold_answer": "ผ่านหน่วยกิตสะสมไม่น้อยกว่า 90 หน่วยกิต, GPA ไม่น้อยกว่า 2.00 และผ่านอบรมสหกิจ 30 ชั่วโมง",
+    "expected_source_file": "curriculum_cs.md"
+  },
+  {
+    "id": 12,
+    "question": "หลักสูตร CS กับ IT ต่างกันยังไง",
+    "type": "curriculum_cs",
+    "gold_answer": "CS (รหัส 254) เน้นทฤษฎีคอมพิวเตอร์ อัลกอริทึม การพัฒนาซอฟต์แวร์เชิงลึก และฮาร์ดแวร์ รวม 123 หน่วยกิต ส่วน IT (รหัส 273) เน้นการประยุกต์ใช้เทคโนโลยีในองค์กรและระบบสารสนเทศ รวม 126 หน่วยกิต ทั้งสองหลักสูตรอยู่ภาควิชาเดียวกันและใช้อาจารย์ร่วมกัน",
+    "expected_source_file": "curriculum_cs.md"
+  },
+  {
+    "id": 13,
+    "question": "จบสาขาวิทยาการคอมพิวเตอร์แล้วทำงานอะไรได้บ้าง",
+    "type": "curriculum_cs",
+    "gold_answer": "นักวิชาการคอมพิวเตอร์, นักวิเคราะห์และออกแบบระบบ, นักพัฒนาซอฟต์แวร์/โปรแกรมเมอร์, ผู้ดูแลระบบเครือข่าย, นักวิเคราะห์ข้อมูล (Data Analyst), ผู้ดูแลด้านความมั่นคงปลอดภัยระบบ (Cybersecurity), นักวิจัยและพัฒนาด้านวิทยาการคอมพิวเตอร์",
+    "expected_source_file": "curriculum_cs.md"
+  },
+  {
+    "id": 14,
+    "question": "หลักสูตรเทคโนโลยีสารสนเทศ (IT) ต้องเรียนกี่หน่วยกิต",
+    "type": "curriculum_it",
+    "gold_answer": "ไม่น้อยกว่า 126 หน่วยกิต (มากกว่าหลักสูตร CS 3 หน่วยกิต)",
+    "expected_source_file": "curriculum_it.md"
+  },
+  {
+    "id": 15,
+    "question": "รหัสสาขาวิชาเทคโนโลยีสารสนเทศคือรหัสอะไร",
+    "type": "curriculum_it",
+    "gold_answer": "273",
+    "expected_source_file": "curriculum_it.md"
+  },
+  {
+    "id": 16,
+    "question": "วิชาแกนของหลักสูตร IT มีกี่หน่วยกิต แบ่งเป็นกลุ่มอะไรบ้าง",
+    "type": "curriculum_it",
+    "gold_answer": "14 หน่วยกิต แบ่งเป็น 3 กลุ่ม: คณิตศาสตร์และสถิติ 9 หน่วยกิต, เทคโนโลยีสารสนเทศพื้นฐาน 4 หน่วยกิต, และวิทยาศาสตร์ 1 หน่วยกิต",
+    "expected_source_file": "curriculum_it.md"
+  },
+  {
+    "id": 17,
+    "question": "จบสาขาเทคโนโลยีสารสนเทศแล้วทำงานอะไรได้บ้าง",
+    "type": "curriculum_it",
+    "gold_answer": "นักวิชาการเทคโนโลยีสารสนเทศ, นักพัฒนาระบบสารสนเทศ, ผู้พัฒนาและดูแลเว็บไซต์, ผู้ดูแลระบบเครือข่าย, ผู้ดูแลฐานข้อมูล, ผู้จัดการโครงการระบบสารสนเทศ, นักนวัตกรเทคโนโลยีสารสนเทศ",
+    "expected_source_file": "curriculum_it.md"
+  },
+  {
+    "id": 18,
+    "question": "อยากลงทะเบียนเกิน 22 หน่วยกิตต่อภาคต้องทำยังไง",
+    "type": "registration",
+    "gold_answer": "ต้องยื่นคำร้องทั่วไป NU18 ระบุชื่อเรื่อง \"ขอลงทะเบียนเรียนมากกว่าเกณฑ์\" ผ่านอาจารย์ที่ปรึกษาและคณบดี",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 19,
+    "question": "ถอนรายวิชาหลัง 2 สัปดาห์แรกจะเป็นยังไง",
+    "type": "registration",
+    "gold_answer": "จะได้รับอักษร W ปรากฏในระเบียนผลการเรียน ต้องยื่นคำร้องขอถอนรายวิชา (NU11) ผ่านเว็บไซต์ www.reg.nu.ac.th ภายในไม่เกินสัปดาห์ที่ 12 ของภาคเรียน",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 20,
+    "question": "ลงทะเบียนล่าช้ามีค่าปรับวันละเท่าไหร่",
+    "type": "registration",
+    "gold_answer": "ค่าปรับวันละ 25 บาท ลงทะเบียนล่าช้าได้ภายใน 2 สัปดาห์แรกของภาคเรียนปกติ หรือ 1 สัปดาห์แรกของภาคฤดูร้อน",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 21,
+    "question": "อยากลงวิชาที่ไม่ได้สำรองที่นั่งให้หลักสูตรตัวเองต้องยื่นฟอร์มอะไร",
+    "type": "registration",
+    "gold_answer": "ต้องยื่น NU6 (แบบขอเปลี่ยนแปลงการสอนรายวิชา) ผ่านอาจารย์ที่ปรึกษา คณบดีต้นสังกัด อาจารย์ผู้สอน ภาควิชา และคณะต้นสังกัดรายวิชา",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 22,
+    "question": "สอบได้ F ในวิชาบังคับต้องทำยังไง",
+    "type": "registration",
+    "gold_answer": "ต้องลงทะเบียนเรียนซ้ำ",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 23,
+    "question": "นิสิตปริญญาตรีภาคปกติลงทะเบียนได้สูงสุดกี่หน่วยกิตต่อภาค",
+    "type": "registration",
+    "gold_answer": "ไม่เกิน 22 หน่วยกิต",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 24,
+    "question": "นิสิตพ้นสภาพเพราะ GPA ต่ำเมื่อไหร่",
+    "type": "student_status",
+    "gold_answer": "เมื่อเรียนครบ 2 ภาคการศึกษาปกติแล้ว GPA สะสมไม่ถึง 1.50 หรือเมื่อเรียนครบ 4 ภาคการศึกษาปกติแล้ว GPA สะสมไม่ถึง 1.75",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 25,
+    "question": "อยากขอคืนสภาพนิสิตต้องยื่นฟอร์มอะไร ค่าธรรมเนียมเท่าไหร่",
+    "type": "student_status",
+    "gold_answer": "ยื่นคำร้อง NU7 ค่าธรรมเนียมระดับปริญญาตรี 1,000 บาท บวกค่าปรับลงทะเบียนล่าช้า 100 บาทต่อสัปดาห์ ต้องยื่นภายใน 5 สัปดาห์หลังพ้นสภาพ",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 26,
+    "question": "อยากลาพักการศึกษาต้องยื่นฟอร์มอะไร",
+    "type": "student_status",
+    "gold_answer": "ยื่นคำร้อง NU17 กรณีนิสิตปริญญาตรีต้องมีผู้ปกครองลงนามยินยอมด้วย",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 27,
+    "question": "อยากย้ายคณะต้องยื่นฟอร์มอะไร ควรยื่นก่อนกี่สัปดาห์",
+    "type": "student_status",
+    "gold_answer": "ยื่นคำร้อง NU13 ควรยื่นก่อนวันลงทะเบียนอย่างน้อย 4 สัปดาห์",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 28,
+    "question": "เกรด A มีค่าระดับขั้นเท่าไหร่",
+    "type": "student_status",
+    "gold_answer": "4.00",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 29,
+    "question": "เกียรตินิยมอันดับหนึ่งต้องมี GPA เท่าไหร่",
+    "type": "student_status",
+    "gold_answer": "GPA ตลอดหลักสูตรตั้งแต่ 3.50 ขึ้นไป และไม่เคยได้ F หรือ U ไม่เคยลงทะเบียนซ้ำ",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 30,
+    "question": "อยากยื่นจบการศึกษาต้องใช้ฟอร์มอะไร ค่าธรรมเนียมเท่าไหร่",
+    "type": "graduation",
+    "gold_answer": "ใช้แบบฟอร์ม NU25 ค่าธรรมเนียมขึ้นทะเบียนปริญญาบัตรระดับปริญญาตรี 2,000 บาท ต้องยื่นภายใน 4 สัปดาห์แรกของภาคเรียนสุดท้าย",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 31,
+    "question": "ยื่นจบล่าช้ากว่ากำหนดมีค่าปรับเท่าไหร่",
+    "type": "graduation",
+    "gold_answer": "ต้องยื่นคำร้อง NU9 พร้อมชำระค่าปรับ 50 บาทต่อวันทำการ นับจากวันพ้นกำหนดถึงวันที่ยื่น",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 32,
+    "question": "เกณฑ์สอบภาษาอังกฤษ CEPT ผ่านสำหรับหลักสูตรไทยต้องได้ระดับอะไร",
+    "type": "graduation",
+    "gold_answer": "CEFR A2 คือ 27 คะแนนขึ้นไป",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 33,
+    "question": "เกณฑ์สอบความรู้คอมพิวเตอร์ผ่านต้องได้กี่เปอร์เซ็นต์",
+    "type": "graduation",
+    "gold_answer": "ไม่ต่ำกว่าร้อยละ 50",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 34,
+    "question": "รูปถ่ายที่ใช้ยื่นจบการศึกษาต้องเป็นรูปแบบไหน ขนาดเท่าไหร่",
+    "type": "graduation",
+    "gold_answer": "รูปถ่ายสวมชุดครุยวิทยฐานะ ขนาด 2 นิ้ว จำนวน 2 รูป ถ่ายไว้ไม่เกิน 6 เดือน ด้านหลังรูประบุชื่อ-สกุล รหัสนิสิต คณะ และสาขาวิชา",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 35,
+    "question": "ฟอร์ม Coop01 คืออะไร",
+    "type": "coop_education",
+    "gold_answer": "ใบสมัครปฏิบัติสหกิจศึกษาของคณะวิทยาศาสตร์ รหัสฟอร์ม SC_Co-op 01 (Application Form for CO-OP JOB)",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 36,
+    "question": "สหกิจศึกษาต้องปฏิบัติงานกี่เดือน",
+    "type": "coop_education",
+    "gold_answer": "4 เดือน (ไม่น้อยกว่า 16 สัปดาห์)",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 37,
+    "question": "ก่อนออกสหกิจศึกษาต้องอบรมกี่ชั่วโมง",
+    "type": "coop_education",
+    "gold_answer": "30 ชั่วโมง",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 38,
+    "question": "Resume สำหรับสมัครสหกิจควรยาวกี่หน้า ใช้ภาษาอะไร",
+    "type": "coop_education",
+    "gold_answer": "ไม่ควรเกิน 2 หน้า ใช้ภาษาอังกฤษเพื่อเพิ่มมูลค่าและภาพลักษณ์",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 39,
+    "question": "ติดต่อหน่วยสหกิจศึกษาคณะวิทยาศาสตร์ได้ที่ไหน",
+    "type": "coop_education",
+    "gold_answer": "นายนิพิฐทภัทร ทัดหล่อ (พี่ไกร) นักวิชาการศึกษา โทร 055-963141 มือถือ 086-587-6293 อีเมล CoopSC@nu.ac.th เว็บไซต์ https://www.sci.nu.ac.th/coop/",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 40,
+    "question": "ผู้กู้ กยศ. ต้องทำชั่วโมงจิตอาสากี่ชั่วโมงต่อปี",
+    "type": "loan_kyo_so",
+    "gold_answer": "ไม่น้อยกว่า 36 ชั่วโมงต่อปี ในช่วง 1 พฤษภาคม ถึง 30 เมษายนปีถัดไป เป็นจิตอาสาด้านจิตสาธารณะเท่านั้น",
+    "expected_source_file": "faq_loan_kyo_so.md"
+  },
+  {
+    "id": 41,
+    "question": "ลืมรหัสผ่าน กยศ. ต้องทำยังไง",
+    "type": "loan_kyo_so",
+    "gold_answer": "เปิดแอปพลิเคชัน กยศ. Connect กดปุ่ม \"ลืมรหัสผ่าน\" แล้วใช้เลขบัตรประจำตัวประชาชนร่วมกับอีเมลหรือหมายเลขโทรศัพท์ที่ลงทะเบียนไว้",
+    "expected_source_file": "faq_loan_kyo_so.md"
+  },
+  {
+    "id": 42,
+    "question": "ค่าครองชีพของผู้กู้ กยศ. โอนเข้าบัญชีภายในกี่วัน",
+    "type": "loan_kyo_so",
+    "gold_answer": "ธนาคารกรุงไทยโอนเข้าบัญชีนิสิตภายใน 30 วันหลังจาก upload สัญญาเข้าสู่ระบบ",
+    "expected_source_file": "faq_loan_kyo_so.md"
+  },
+  {
+    "id": 43,
+    "question": "ติดต่อเจ้าหน้าที่ กยศ. คณะวิทยาศาสตร์ได้ที่ใคร",
+    "type": "loan_kyo_so",
+    "gold_answer": "นางสาวปิยารมณ์ ครองราช (พี่มะนาว) โทร 055-963152 อีเมล piyaromk@nu.ac.th ห้องทำงาน SC1 ห้องกิจการนิสิตและศิษย์เก่าสัมพันธ์",
+    "expected_source_file": "faq_loan_kyo_so.md"
+  },
+  {
+    "id": 44,
+    "question": "ที่อยู่ภาควิชา CSIT อยู่ที่ไหน",
+    "type": "contact_info",
+    "gold_answer": "เลขที่ 99 หมู่ที่ 9 ตำบลท่าโพธิ์ อำเภอเมืองพิษณุโลก จังหวัดพิษณุโลก 65000 โทร 055-963262, 055-963263",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 45,
+    "question": "นิสิตคณะวิทยาศาสตร์ติดต่องานทะเบียนได้ที่ใคร",
+    "type": "contact_info",
+    "gold_answer": "พชรพรรณ ปลื้มวงศ์ โทร 055-968315 ดูแลคณะวิทยาศาสตร์การแพทย์ คณะวิทยาศาสตร์ และคณะศึกษาศาสตร์",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 46,
+    "question": "เปลี่ยนรหัสผ่านระบบทะเบียนออนไลน์ได้ที่ไหน",
+    "type": "contact_info",
+    "gold_answer": "https://password.nu.ac.th รหัสผ่านต้องมีตัวอักษร ตัวเลข และสัญลักษณ์ ความยาวไม่น้อยกว่า 6 หลัก และขึ้นต้นด้วยตัวอักษร",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 47,
+    "question": "ตอนนี้ภาควิชา CSIT มีทุนการศึกษาอะไรให้บ้าง",
+    "type": "redirect_no_data",
+    "gold_answer": "ระบบไม่ได้เก็บรายชื่อหรือรายละเอียดทุนไว้ตายตัวเพราะเปลี่ยนแปลงทุกปีการศึกษา ควรตรวจสอบประกาศทุนล่าสุดจากเว็บไซต์ภาควิชา https://csit.nu.ac.th/ หรือเพจเฟซบุ๊ก CSIT โดยตรง",
+    "expected_source_file": "scholarship_and_news.md"
+  },
+  {
+    "id": 48,
+    "question": "อัตราดอกเบี้ย กยศ. ตอนนี้กี่เปอร์เซ็นต์",
+    "type": "redirect_no_data",
+    "gold_answer": "ระบบไม่ได้เก็บรายละเอียดที่เปลี่ยนแปลงบ่อยแบบนี้ไว้ ควรตรวจสอบจากเว็บไซต์กองทุน กยศ. มหาวิทยาลัยนเรศวร https://www.acad.nu.ac.th/studentloan/ หรือติดต่อเจ้าหน้าที่ กยศ. คณะวิทยาศาสตร์โดยตรง",
+    "expected_source_file": "faq_loan_kyo_so.md"
+  },
+  {
+    "id": 49,
+    "question": "สวัสดีครับ",
+    "type": "greeting",
+    "gold_answer": "ทักทายกลับอย่างเป็นมิตร แนะนำตัวว่าเป็นผู้ช่วยตอบคำถามของภาควิชา CSIT และถามว่าช่วยอะไรได้บ้าง",
+    "expected_source_file": null
+  },
+  {
+    "id": 50,
+    "question": "ขอบคุณครับ",
+    "type": "greeting",
+    "gold_answer": "ตอบขอบคุณกลับอย่างสุภาพ และเปิดโอกาสให้ถามคำถามเพิ่มเติมได้",
+    "expected_source_file": null
+  },
+  {
+    "id": 51,
+    "question": "อาจารย์ที่ปรึกษาที่จบปริญญาเอกจากต่างประเทศมีใครบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 52,
+    "question": "อาจารย์ที่จบเอกต่างประเทศมีกี่ท่าน",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน จากอาจารย์ทั้งหมด 20 ท่านของภาควิชา CSIT",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 53,
+    "question": "อาจารย์คนไหนจบ ป.เอก จากเมืองนอกบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 54,
+    "question": "ขอรายชื่ออาจารย์ที่จบปริญญาเอกจากต่างประเทศ",
+    "type": "multi_hop_kg",
+    "gold_answer": "รายชื่ออาจารย์ที่จบปริญญาเอกจากต่างประเทศ 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 55,
+    "question": "อาจารย์ในภาควิชาที่จบดุษฎีบัณฑิตจากต่างประเทศมีใครบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 56,
+    "question": "อยากรู้ว่าอาจารย์ท่านไหนจบปริญญาเอกนอกประเทศบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 57,
+    "question": "อาจารย์ที่จบ PhD จากต่างประเทศมีกี่คน",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 คน จบจากสหราชอาณาจักร 5 ท่าน ออสเตรเลีย 2 ท่าน และสหรัฐอเมริกา 2 ท่าน",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 58,
+    "question": "อาจารย์ทุกคนที่จบปริญญาเอกต่างประเทศ ชื่ออะไรบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 59,
+    "question": "ต้องจบปริญญาเอกไหมถึงจะเป็นอาจารย์ได้",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "เป็นคำถามเชิงคุณสมบัติทั่วไป ระบบไม่ได้เก็บเกณฑ์การรับอาจารย์ไว้ ควรแนะนำให้ติดต่อภาควิชา CSIT โดยตรง ไม่ควรตอบด้วยรายชื่ออาจารย์",
+    "expected_source_file": null
+  },
+  {
+    "id": 60,
+    "question": "อาจารย์สัญญาจบปริญญาเอกจากที่ไหน",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "ผศ.ดร.สัญญา เครือหงษ์ จบปริญญาเอกจาก University of Technology Sydney ประเทศออสเตรเลีย สาขา Computer Systems",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 61,
+    "question": "อาจารย์จบเอกคอมพิวเตอร์มีใครบ้าง",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "คำว่า 'เอก' ในคำถามนี้หมายถึงสาขาวิชาเอก ไม่ใช่ปริญญาเอก ควรตอบด้วยข้อมูลสาขาที่อาจารย์เชี่ยวชาญ ไม่ใช่รายชื่อผู้จบปริญญาเอกต่างประเทศ",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 62,
+    "question": "อาจารย์ที่จบปริญญาเอกในประเทศไทยมีใครบ้าง",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "มี 6 ท่าน ได้แก่ ผศ.ดร.เกรียงศักดิ์ เตมีย์ (สจล.), ผศ.ดร.สุธาสินี จิตต์อนันต์ (ม.เกษตรศาสตร์), ผศ.ดร.ธนะธร พ่อค้า (จุฬาฯ), ดร.ณัฐพล คุ้มใหญ่โต (ม.นเรศวร), ดร.พัชรี ดุลนิมิตร (จุฬาฯ) และ ดร.ลิมปพัทธ์ บุษบัน (ม.เชียงใหม่)",
+    "expected_source_file": "staff_csit.md"
+  }
+]

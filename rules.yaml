@@ -181,6 +181,9 @@ academic_status:
     probation:
       label: "นิสิตรอพินิจ"
       condition: "GPA สะสม < 2.00"
+      # ค่าตัวเลขสำหรับให้โค้ดใช้คำนวณ (condition ด้านบนเป็นข้อความสำหรับคนอ่าน)
+      # เพิ่ม 2026-07-23 — เดิม rules.py hardcode 2.00 ไว้ในโค้ด แก้ yaml แล้วไม่มีผล
+      threshold: 2.00
 
   # --- เกณฑ์พ้นสภาพจากผลการเรียน ---
   dismissal_by_gpa:
