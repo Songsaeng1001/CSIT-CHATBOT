@@ -10,10 +10,8 @@ Quick Reply — ปุ่มแนะนำ "คำถามต่อ" ใต้
   (rich menu มี: หลักสูตร / อาจารย์ / ติดต่อภาควิชา / ยื่นจบ / กยศ. / คำร้อง)
   จึงเป็นคำถามย่อยที่ลึกกว่าเมนู เพื่อไม่ให้ผู้ใช้เห็นตัวเลือกซ้ำ
 """
-
-# ── ข้อจำกัดของ LINE ──
-QR_LIMIT = 13      # ปุ่มต่อข้อความสูงสุด
-LABEL_MAX = 20     # ความยาว label สูงสุด (ภาษาไทยก็นับ)
+QR_LIMIT = 13      
+LABEL_MAX = 20     
 
 
 def _qr(label: str, text: str) -> dict:
@@ -23,8 +21,6 @@ def _qr(label: str, text: str) -> dict:
         "action": {"type": "message", "label": label[:LABEL_MAX], "text": text},
     }
 
-
-# ── ชุดปุ่มแยกตามหัวข้อ (เลี่ยงหัวข้อที่ rich menu มีแล้ว) ──
 QUICK_REPLIES: dict[str, list[dict]] = {
     "forms": [
         _qr("ขั้นตอนการยื่น", "ขั้นตอนการยื่นคำร้องนี้ทำยังไง"),
@@ -59,20 +55,15 @@ QUICK_REPLIES: dict[str, list[dict]] = {
     ],
 }
 
-# ── ชุดปุ่ม default (RAG ทั่วไป / greeting / หมวดไม่เจาะจง) ──
-# เลี่ยง 6 หัวข้อใน rich menu → ใช้คำถามย่อยที่เมนูไม่มี
 DEFAULT_QR: list[dict] = [
     _qr("ปฏิทินการศึกษา", "ขอปฏิทินการศึกษา"),
     _qr("ลงทะเบียนกี่หน่วยกิต", "ลงทะเบียนได้กี่หน่วยกิต"),
     _qr("ค่าปรับลงช้า", "ลงทะเบียนช้าค่าปรับเท่าไร"),
 ]
 
-# ── alias: ชื่อ route (main.py) หรือ source (retriever) → topic key ──
-# map เป็น None = ใช้ DEFAULT_QR
 _ALIASES: dict[str, str | None] = {
-    # route names จาก main.py
-    "greeting": None,            # ทักทาย → ปุ่มแนะนำ default (ช่วยนำทาง)
-    "loan_redirect": None,       # redirect → default กันปุ่มวนกลับ redirect เดิม
+    "greeting": None,            
+    "loan_redirect": None,       
     "calendar_redirect": None,
     "nuform_list": "forms",
     "instructor_list": "instructors",
@@ -80,7 +71,6 @@ _ALIASES: dict[str, str | None] = {
     "contact": "staff",
     "RAG": None,
     "error": None,
-    # sources_used จาก retriever (เผื่อ refine ฝั่ง RAG ด้วย topic_from_sources)
     "SQLite/nu_forms": "forms",
     "SQLite/instructors": "instructors",
     "SQLite/staff": "staff",
@@ -97,9 +87,9 @@ _ALIASES: dict[str, str | None] = {
 def _resolve_topic(key: str | None) -> str | None:
     if key is None:
         return None
-    if key in QUICK_REPLIES:   # ส่ง topic key ตรง ๆ มาก็ได้
+    if key in QUICK_REPLIES:   
         return key
-    return _ALIASES.get(key)   # ไม่รู้จัก → None → default
+    return _ALIASES.get(key)   
 
 
 def quick_reply_for(key: str | None) -> dict | None:
@@ -108,8 +98,6 @@ def quick_reply_for(key: str | None) -> dict | None:
     items = QUICK_REPLIES.get(topic, DEFAULT_QR)
     return {"items": items[:QR_LIMIT]} if items else None
 
-
-# ── (ออปชันเสริม) เลือก topic จาก context.sources_used สำหรับ refine ฝั่ง RAG ──
 _SOURCE_PRIORITY = [
     "SQLite/nu_forms", "SQLite/instructors", "SQLite/staff",
     "Rule/honor", "Rule/late_fee", "Rule/credit", "Rule/status",

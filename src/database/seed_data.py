@@ -6,10 +6,7 @@ Seed Data Script — ใส่ข้อมูลพื้นฐานลง SQLi
 """
 
 from src.database.sqlite_db import init_database, db_session
-
-# ─── ข้อมูลอาจารย์ภาควิชา CSIT 20 ท่าน ─────────────
 INSTRUCTORS = [
-    # ─── รองศาสตราจารย์ ───
     {
         "name": "จักรกฤษณ์ เสน่ห์ นมะหุต",
         "title": "รองศาสตราจารย์",
@@ -46,7 +43,6 @@ INSTRUCTORS = [
         "office": "SC2-217",
         "specialization": None,
     },
-    # ─── ผู้ช่วยศาสตราจารย์ ───
     {
         "name": "อนงค์พร ไศลวรากุล",
         "title": "ผู้ช่วยศาสตราจารย์",
@@ -110,7 +106,6 @@ INSTRUCTORS = [
         "office": "SC2-306",
         "specialization": None,
     },
-    # ─── อาจารย์ ───
     {
         "name": "เอกสิทธิ์ เทียมแก้ว",
         "title": "อาจารย์",
@@ -194,8 +189,6 @@ INSTRUCTORS = [
     },
 ]
 
-
-# ─── เจ้าหน้าที่ภาควิชา 4 ท่าน ───────────────────────
 STAFF = [
     {
         "name": "ปทุมา แก้วแดง",
@@ -231,7 +224,6 @@ STAFF = [
     },
 ]
 
-# ─── เจ้าหน้าที่หน่วยสหกิจศึกษา คณะวิทยาศาสตร์ 1 ท่าน ────────
 COOP_STAFF = [
     {
         "name": "นิพิฐทภัทร ทัดหล่อ",
@@ -242,7 +234,6 @@ COOP_STAFF = [
         "office": "หน่วยสหกิจศึกษา คณะวิทยาศาสตร์",
     },
 ]
-# ─── เจ้าหน้าที่กยศ. คณะวิทยาศาสตร์ 1 ท่าน ────────
 LOANSCI_STAFF = [
     {
         "name": "ปิยารมณ์ ครองราช",
@@ -254,8 +245,6 @@ LOANSCI_STAFF = [
     },
 ]
 
-
-# ─── เจ้าหน้าที่งานทะเบียนนิสิตประจำคณะ 6 ท่าน ────────
 REGISTRAR_STAFF = [
     {
         "name": "พชรพรรณ ปลื้มวงศ์",
@@ -289,10 +278,7 @@ REGISTRAR_STAFF = [
     },
 ]
 
-
-# ─── หน่วยงาน/เบอร์ติดต่อในมหาวิทยาลัย ────────────────
 OFFICE_CONTACTS = [
-    # ── ภาควิชา ──
     {
         "unit": "ภาควิชา CSIT",
         "phone": "055-963262, 055-963263",
@@ -301,7 +287,6 @@ OFFICE_CONTACTS = [
         "note": "สอบถามข้อมูลนิสิต งานภาควิชา",
         "category": "ภาควิชา",
     },
-    # ── ทะเบียน / กองบริการการศึกษา ──
     {
         "unit": "กองบริการการศึกษา (เคาน์เตอร์)",
         "phone": "055-968324",
@@ -374,7 +359,6 @@ OFFICE_CONTACTS = [
         "note": "ร้องเรียน/ข้อเสนอแนะ",
         "category": "ทะเบียน",
     },
-    # ── กยศ. / การเงิน ──
     {
         "unit": "งานส่งเสริมการจัดการศึกษา / กยศ.",
         "phone": "055-968316, 055-968319",
@@ -391,7 +375,6 @@ OFFICE_CONTACTS = [
         "note": "ชำระค่าเทอม ใบเสร็จ",
         "category": "การเงิน",
     },
-    # ── IT / ภาษา / หอสมุด ──
     {
         "unit": "งานระบบเครือข่าย (CITCOMS)",
         "phone": "055-961512, 055-961524",
@@ -416,7 +399,6 @@ OFFICE_CONTACTS = [
         "note": "ยืม-คืนหนังสือ พื้นที่อ่าน 24 ชม. ห้องติว",
         "category": "บริการ",
     },
-    # ── กิจการนิสิต (อาคารขวัญเมือง) ──
     {
         "unit": "กองกิจการนิสิต (บริการนิสิต)",
         "phone": "055-961216, 055-961287",
@@ -465,7 +447,6 @@ OFFICE_CONTACTS = [
         "note": "ใบรับรองความประพฤติ ร้องทุกข์ วินัยนิสิต",
         "category": "กิจการนิสิต",
     },
-    # ── สหกิจศึกษา (คณะวิทย์) ──
     {
         "unit": "หน่วยสหกิจศึกษา คณะวิทยาศาสตร์",
         "phone": "055-963141, 086-587-6293",
@@ -474,7 +455,6 @@ OFFICE_CONTACTS = [
         "note": "ติดต่อพี่ไกร (นิพิฐทภัทร ทัดหล่อ) สมัครสหกิจที่ https://www.sci.nu.ac.th/coop/",
         "category": "สหกิจ",
     },
-    # ── ความปลอดภัย ──
     {
         "unit": "สถานีตำรวจชุมชน",
         "phone": "055-261800",
@@ -485,10 +465,7 @@ OFFICE_CONTACTS = [
     },
 ]
 
-
-# ─── คำร้อง NU Forms 24 รายการ ────────────────────────
 NU_FORMS = [
-    # ── ข้อมูลนิสิตใหม่ ──
     {
         "code": "NU1",
         "name_th": "ระเบียนประวัตินิสิต",
@@ -496,7 +473,6 @@ NU_FORMS = [
         "purpose": "เก็บข้อมูลประวัตินิสิตใหม่ตอนรายงานตัว",
         "fee": None,
     },
-    # ── ลงทะเบียน ──
     {
         "code": "NU3",
         "name_th": "คู่มือลงทะเบียนเรียน",
@@ -581,7 +557,6 @@ NU_FORMS = [
         "purpose": "ใช้เมื่อมอบอำนาจให้ผู้อื่นดำเนินการแทน",
         "fee": None,
     },
-    # ── เอกสารสำคัญ ──
     {
         "code": "NU15",
         "name_th": "คำร้องขอใบแสดงผลการเรียน (Transcript)",
@@ -603,7 +578,6 @@ NU_FORMS = [
         "purpose": "ยื่นในภาคที่คาดว่าจะจบ ภายใน 4 สัปดาห์หลังเปิดเทอม",
         "fee": "ป.ตรี 2,000 บาท / บัณฑิตศึกษา 2,500 บาท",
     },
-    # ── ระเบียนประวัติ ──
     {
         "code": "NU13",
         "name_th": "คำร้องขอย้ายคณะ/สาขาวิชา",
@@ -632,7 +606,6 @@ NU_FORMS = [
         "purpose": "ใช้ลาออกจากการเป็นนิสิต ผู้ปกครองต้องลงนามยินยอม (ป.ตรี)",
         "fee": None,
     },
-    # ── ประมวลผลข้อมูล ──
     {
         "code": "NU32",
         "name_th": "แบบรายงานผลการเรียนรายวิชา",
@@ -647,7 +620,6 @@ NU_FORMS = [
         "purpose": "อาจารย์ผู้สอนใช้แก้อักษร I หรือ P (นิสิตไม่ได้ยื่นเอง)",
         "fee": None,
     },
-    # ── สารนิเทศ ──
     {
         "code": "NU22",
         "name_th": "รายงานสถิติจำนวนนิสิตที่ลงทะเบียนเรียน",
@@ -664,10 +636,7 @@ NU_FORMS = [
     },
 ]
 
-
-# ─── ลิงก์สำคัญ (ครบทุกหมวด) ─────────────────────────
 IMPORTANT_LINKS = [
-    # ── ระบบ ──
     {
         "title": "ระบบทะเบียนออนไลน์ (e-Registrar)",
         "url": "https://www.reg.nu.ac.th",
@@ -686,7 +655,6 @@ IMPORTANT_LINKS = [
         "category": "ระบบ",
         "description": "ระบบบันทึก/ตรวจสอบกิจกรรมนิสิต",
     },
-    # ── เอกสาร ──
     {
         "title": "ปฏิทินการศึกษา",
         "url": "https://reg4.nu.ac.th/registrar/calendar.asp?avs727811069=1",
@@ -717,7 +685,6 @@ IMPORTANT_LINKS = [
         "category": "เอกสาร",
         "description": "วิธีใช้แอปพลิเคชัน NU สำหรับผู้สอน",
     },
-    # ── กยศ. ──
     {
         "title": "กยศ. มหาวิทยาลัยนเรศวร",
         "url": "https://www.acad.nu.ac.th/studentloan/",
@@ -730,7 +697,6 @@ IMPORTANT_LINKS = [
         "category": "กยศ.",
         "description": "ระบบยื่นกู้/ยืนยันการกู้ กยศ. ส่วนกลาง",
     },
-    # ── หน่วยงาน ──
     {
         "title": "กองบริการการศึกษา",
         "url": "https://www.acad.nu.ac.th",
@@ -749,14 +715,12 @@ IMPORTANT_LINKS = [
         "category": "หน่วยงาน",
         "description": "ระบบสมัครสหกิจศึกษา MIS",
     },
-    # ── ติดต่อ ──
     {
         "title": "แผนที่ภาควิชา CSIT",
         "url": "https://maps.app.goo.gl/wjmiv9KBu8Q1ScmA9",
         "category": "ติดต่อ",
         "description": "Google Maps พิกัดภาควิชา CSIT",
     },
-    # ── Facebook ──
     {
         "title": "เพจ CSIT",
         "url": "https://www.facebook.com/share/1N5QSZJYBn/?mibextid=wwXIfr",
@@ -831,15 +795,8 @@ IMPORTANT_LINKS = [
     },
 ]
 
-
-# ═══════════════════════════════════════════════════════
-# Seed Functions
-# ═══════════════════════════════════════════════════════
-
-
 def seed_instructors(conn):
-    """ใส่ข้อมูลอาจารย์"""
-    print("👨‍🏫 Seed อาจารย์...")
+    print("Seed อาจารย์...")
     conn.execute("DELETE FROM instructors")
     for inst in INSTRUCTORS:
         conn.execute(
@@ -856,11 +813,10 @@ def seed_instructors(conn):
                 inst["specialization"],
             ),
         )
-    print(f"   ✅ เพิ่ม {len(INSTRUCTORS)} อาจารย์")
+    print(f"เพิ่ม {len(INSTRUCTORS)} อาจารย์")
 
 
 def seed_staff(conn):
-    """ใส่ข้อมูลเจ้าหน้าที่ภาควิชา"""
     print("👥 Seed เจ้าหน้าที่ภาควิชา...")
     conn.execute("DELETE FROM staff")
     for s in STAFF:
@@ -876,12 +832,11 @@ def seed_staff(conn):
                 s["office"],
             ),
         )
-    print(f"   ✅ เพิ่ม {len(STAFF)} เจ้าหน้าที่")
+    print(f"เพิ่ม {len(STAFF)} เจ้าหน้าที่")
 
 
 def seed_coop_staff(conn):
-    """ใส่ข้อมูลเจ้าหน้าที่หน่วยสหกิจศึกษา"""
-    print("🎓 Seed เจ้าหน้าที่หน่วยสหกิจ...")
+    print("Seed เจ้าหน้าที่หน่วยสหกิจ...")
     conn.execute("DELETE FROM coop_staff")
     for c in COOP_STAFF:
         conn.execute(
@@ -896,12 +851,11 @@ def seed_coop_staff(conn):
                 c["office"],
             ),
         )
-    print(f"   ✅ เพิ่ม {len(COOP_STAFF)} ท่าน")
+    print(f"เพิ่ม {len(COOP_STAFF)} ท่าน")
 
 
 def seed_loansci_staff(conn):
-    """ใส่ข้อมูลเจ้าหน้าที่กยศ.คณะวิทยาศาสตร์"""
-    print("🎓 Seed เจ้าหน้ากยศ.คณะวิทยาศาสตร์")
+    print(" Seed เจ้าหน้ากยศ.คณะวิทยาศาสตร์")
     conn.execute("DELETE FROM loansci_staff")
     for l in LOANSCI_STAFF:
         conn.execute(
@@ -916,12 +870,11 @@ def seed_loansci_staff(conn):
                 l["office"],
             ),
         )
-    print(f"   ✅ เพิ่ม {len(LOANSCI_STAFF)} ท่าน")
+    print(f"เพิ่ม {len(LOANSCI_STAFF)} ท่าน")
 
 
 def seed_registrar(conn):
-    """ใส่ข้อมูลเจ้าหน้าที่งานทะเบียนนิสิตประจำคณะ"""
-    print("🗂  Seed เจ้าหน้าที่งานทะเบียนประจำคณะ...")
+    print("Seed เจ้าหน้าที่งานทะเบียนประจำคณะ...")
     conn.execute("DELETE FROM registrar_staff")
     for r in REGISTRAR_STAFF:
         conn.execute(
@@ -929,12 +882,11 @@ def seed_registrar(conn):
                VALUES (?, ?, ?)""",
             (r["name"], r["phone"], r["faculties"]),
         )
-    print(f"   ✅ เพิ่ม {len(REGISTRAR_STAFF)} ท่าน")
+    print(f"เพิ่ม {len(REGISTRAR_STAFF)} ท่าน")
 
 
 def seed_offices(conn):
-    """ใส่ข้อมูลหน่วยงาน/เบอร์ติดต่อในมหาวิทยาลัย"""
-    print("🏢 Seed หน่วยงาน/เบอร์ติดต่อ...")
+    print("Seed หน่วยงาน/เบอร์ติดต่อ...")
     conn.execute("DELETE FROM office_contacts")
     for o in OFFICE_CONTACTS:
         conn.execute(
@@ -950,12 +902,11 @@ def seed_offices(conn):
                 o["category"],
             ),
         )
-    print(f"   ✅ เพิ่ม {len(OFFICE_CONTACTS)} หน่วยงาน")
+    print(f"เพิ่ม {len(OFFICE_CONTACTS)} หน่วยงาน")
 
 
 def seed_nu_forms(conn):
-    """ใส่ข้อมูล NU forms (ครบทุกรายการ)"""
-    print("📋 Seed NU forms...")
+    print("Seed NU forms...")
     conn.execute("DELETE FROM nu_forms")
     for f in NU_FORMS:
         conn.execute(
@@ -963,12 +914,11 @@ def seed_nu_forms(conn):
                VALUES (?, ?, ?, ?, ?)""",
             (f["code"], f["name_th"], f["category"], f["purpose"], f["fee"]),
         )
-    print(f"   ✅ เพิ่ม {len(NU_FORMS)} forms")
+    print(f"เพิ่ม {len(NU_FORMS)} forms")
 
 
 def seed_links(conn):
-    """ใส่ข้อมูลลิงก์สำคัญ"""
-    print("🔗 Seed important links...")
+    print("Seed important links...")
     conn.execute("DELETE FROM important_links")
     for link in IMPORTANT_LINKS:
         conn.execute(
@@ -976,12 +926,12 @@ def seed_links(conn):
                VALUES (?, ?, ?, ?)""",
             (link["title"], link["url"], link["category"], link["description"]),
         )
-    print(f"   ✅ เพิ่ม {len(IMPORTANT_LINKS)} ลิงก์")
+    print(f"เพิ่ม {len(IMPORTANT_LINKS)} ลิงก์")
 
 
 def main():
     print("=" * 60)
-    print("🌱 Seed Data ลง SQLite")
+    print("Seed Data ลง SQLite")
     print("=" * 60)
 
     init_database()
@@ -998,7 +948,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("📊 สรุป SQLite Database")
+    print("สรุป SQLite Database")
     print("=" * 60)
 
     with db_session() as conn:
@@ -1016,7 +966,7 @@ def main():
             print(f"   {table:25s}: {count} records")
 
     print()
-    print("✅ Seed สำเร็จ! พร้อมใช้งาน RAR")
+    print("Seed สำเร็จ! พร้อมใช้งาน RAR")
 
 
 if __name__ == "__main__":

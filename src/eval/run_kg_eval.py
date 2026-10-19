@@ -42,21 +42,9 @@ import order ผิด — กันข้อมูล 2 ระบบปนก�
 """
 
 import os
-
-# ⚠️ บรรทัดนี้ต้องอยู่ "ก่อน" การ import src.* / run_baseline_eval ทุกตัว
-#    เพราะ src/retriever.py อ่าน CSIT_ENABLE_KG ตอน import ระดับ module
-#    (ตั้งทีหลัง retriever จะ freeze ค่า default = "1" ของตัวเองไปแล้ว)
 os.environ["CSIT_ENABLE_KG"] = "1"
-
 import sys
-
-# import หลังตั้ง env var แล้วเท่านั้น — ตอนนี้ run_baseline_eval จะเห็น
-# CSIT_ENABLE_KG=1 (setdefault ข้างในจะไม่เขียนทับ) และ retriever.ENABLE_KG=True
 import src.eval.run_baseline_eval as base
-
-# เปลี่ยนปลายทางบันทึกผลเป็น kg_results.json
-# run(), save_results(), load_existing_results() ทุกตัวอ้าง RESULTS_PATH
-# เป็น module global ที่ resolve ตอน runtime — reassign ที่นี่จึงมีผลครบทุกจุด
 base.RESULTS_PATH = base.RESULTS_DIR / "kg_results.json"
 
 

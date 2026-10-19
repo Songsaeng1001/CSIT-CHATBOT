@@ -46,39 +46,26 @@ Introduction to Information Retrieval, บทที่ 8
 
 import os
 from collections import defaultdict
-
-# เคสทดสอบ KG ต้องการให้ KG เปิด (ค่า default ของ retriever คือเปิดอยู่แล้ว)
 os.environ.setdefault("CSIT_ENABLE_KG", "1")
 
-from src.retriever import classify_query  # noqa: E402
-
-# source ที่ระบบใส่ให้ทุกคำถามโดยตั้งใจ — ไม่นับเป็นความผิดถ้าโผล่มา
+from src.retriever import classify_query  
 NEUTRAL_SOURCES = {"chroma"}
 
 
 ROUTING_CASES = [
-    # ── Rule engine: เกียรตินิยม ────────────────────────────
     {"q": "GPA 3.30 ได้เกียรตินิยมไหม", "require": {"rule_honor"}},
     {"q": "เกรดเฉลี่ย 3.55 ได้เกียรตินิยมอันดับอะไร", "require": {"rule_honor"}},
-    # ถามเกณฑ์ลอย ๆ ไม่มีตัวเลข → ไม่ควรปลุก rule engine
     {"q": "เกณฑ์เกียรตินิยมของมหาวิทยาลัยเป็นยังไง", "forbid": {"rule_honor"}},
 
-    # ── Rule engine: ค่าปรับล่าช้า ──────────────────────────
     {"q": "ลงทะเบียนช้า 5 วัน เสียค่าปรับเท่าไร", "require": {"rule_late_fee"}},
     {"q": "ลงทะเบียนช้าไป 20 วันแล้วจะเป็นยังไง", "require": {"rule_late_fee"}},
     {"q": "ลงทะเบียนล่าช้ามีค่าปรับไหม", "forbid": {"rule_late_fee"}},
 
-    # ── Rule engine: หน่วยกิต ───────────────────────────────
     {"q": "ลง 25 หน่วยกิตได้ไหม", "require": {"rule_credit"}},
     {"q": "อยากลงทะเบียนเกิน 22 หน่วยกิตต่อภาคต้องทำยังไง", "require": {"rule_credit"}},
 
-    # ── Rule engine: สถานภาพนิสิต ───────────────────────────
-    # ⚠️ รู้อยู่แล้วว่าเคสนี้ปลุก rule_honor ตามมาด้วย (ตัวเลข GPA ไปเข้าเงื่อนไข
-    #    เกียรตินิยม) จึงยังไม่ใส่ rule_honor ใน forbid — ถ้าแก้ให้แยกเจตนาได้
-    #    เมื่อไหร่ ค่อยเพิ่ม forbid แล้วเคสนี้จะฟ้องให้รู้
     {"q": "GPA 1.65 เรียนมา 3 ภาค สถานภาพเป็นยังไง", "require": {"rule_status"}},
 
-    # ── KG: กวาดทุกคนแล้วกรองคุณสมบัติ ──────────────────────
     {"q": "อาจารย์ที่ปรึกษาที่จบปริญญาเอกจากต่างประเทศมีใครบ้าง",
      "require": {"sqlite_kg_foreign_phd"}},
     {"q": "อาจารย์ที่จบเอกต่างประเทศมีกี่ท่าน",
@@ -87,26 +74,22 @@ ROUTING_CASES = [
      "require": {"sqlite_kg_foreign_phd"}},
     {"q": "อาจารย์ที่จบปริญญาเอกมีกี่ท่าน", "require": {"sqlite_kg_foreign_phd"}},
 
-    # negative ของ KG — สำคัญที่สุด เพราะวัดว่า trigger ไม่เหวี่ยงแห
     {"q": "ต้องจบปริญญาเอกไหมถึงจะเป็นอาจารย์ได้",
      "forbid": {"sqlite_kg_foreign_phd"}},
-    # "จบเอก" ที่หมายถึงวิชาเอก ไม่ใช่ปริญญาเอก
     {"q": "อาจารย์จบเอกคอมพิวเตอร์มีใครบ้าง", "forbid": {"sqlite_kg_foreign_phd"}},
     {"q": "อาจารย์ที่จบเอกมีกี่คน", "forbid": {"sqlite_kg_foreign_phd"}},
-    # มีชื่อคนเจาะจง → ต้องไปรายบุคคล ไม่ใช่กวาดทั้งภาควิชา
     {"q": "อาจารย์สัญญาจบปริญญาเอกจากที่ไหน",
      "require": {"sqlite_instructors"}, "forbid": {"sqlite_kg_foreign_phd"}},
+    {"q": "อาจารย์ที่จบปริญญาเอกในประเทศไทยมีใครบ้าง",
+     "forbid": {"sqlite_kg_foreign_phd"}},
 
-    # ── SQLite: อาจารย์รายบุคคล ─────────────────────────────
     {"q": "อาจารย์เทวินจบจากที่ไหน", "require": {"sqlite_instructors"}},
     {"q": "อีเมลอาจารย์จักรกฤษณ์คืออะไร", "require": {"sqlite_instructors"}},
     {"q": "จรัสศรีอยู่ห้องไหน", "require": {"sqlite_instructors"}},
 
-    # ── NU form ─────────────────────────────────────────────
     {"q": "NU18 คือแบบฟอร์มอะไร", "require": {"sqlite_forms"}},
     {"q": "ขั้นตอนการยื่น NU7 ทำยังไง", "require": {"sqlite_forms"}},
 
-    # ── RAG ล้วน — ไม่ควรปลุก rule/sqlite ใด ๆ ──────────────
     {"q": "หลักสูตร CS ต้องเรียนกี่หน่วยกิตจึงจะจบ",
      "forbid": {"rule_credit", "sqlite_instructors"}},
     {"q": "สหกิจศึกษาต้องเตรียมตัวยังไง",
@@ -117,8 +100,8 @@ ROUTING_CASES = [
 def evaluate():
     req_hit = req_total = 0
     forbid_ok = forbid_total = 0
-    clean_cases = 0            # ไม่พลาด require และไม่ละเมิด forbid
-    exact_cases = 0            # เหมือนข้างบน + ไม่มี source ส่วนเกินเลย
+    clean_cases = 0            
+    exact_cases = 0            
     extra_counter = defaultdict(int)
     problems = []
 
@@ -147,7 +130,7 @@ def evaluate():
             extra_counter[s] += 1
 
     n = len(ROUTING_CASES)
-    print("🧭 ประเมินความแม่นของตัวจัดเส้นทาง (rule-based router)")
+    print(" ประเมินความแม่นของตัวจัดเส้นทาง (rule-based router)")
     print("=" * 68)
     print(f"\nเคสที่ผ่าน (ไม่พลาด require + ไม่ละเมิด forbid): "
           f"{clean_cases}/{n} = {clean_cases/n:.1%}")
@@ -165,7 +148,7 @@ def evaluate():
             print(f"   {s}: {c} เคส")
 
     if problems:
-        print(f"\n❌ เคสที่มีปัญหา {len(problems)} ข้อ:")
+        print(f"\n เคสที่มีปัญหา {len(problems)} ข้อ:")
         for q, missing, violated, got in problems:
             print(f"\n   {q}")
             if missing:
@@ -174,7 +157,7 @@ def evaluate():
                 print(f"      มี source ที่ห้ามมี:  {violated}")
             print(f"      ได้จริง: {got}")
     else:
-        print("\n✅ ผ่านทุกเคส")
+        print("\n ผ่านทุกเคส")
 
     return clean_cases / n
 

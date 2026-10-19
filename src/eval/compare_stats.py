@@ -17,7 +17,7 @@ comprehensiveness/diversity/empowerment) ไม่ได้ใช้ paired t-te
 ตัวเลขแบบไฟล์นี้เลย จึงเปลี่ยนไปอ้างอิง Smucker et al. (2007) แทน เพราะตรงกับวิธี
 ที่ไฟล์นี้ใช้จริง 100%)
 
-⚠️ Multiple comparisons: ไฟล์นี้ทดสอบสถิติหลายครั้งในการรันครั้งเดียว (3 metric ตอน
+Multiple comparisons: ไฟล์นี้ทดสอบสถิติหลายครั้งในการรันครั้งเดียว (3 metric ตอน
 เรียกแบบภาพรวม, มากถึง 3 x จำนวนกลุ่มคำถามตอนใช้ --by-type) ยิ่งทดสอบหลายครั้ง
 ยิ่งเสี่ยงเจอนัยสำคัญปลอม (false discovery) จึงแก้ไขด้วย Benjamini-Hochberg (BH)
 correction คำนวณ q-value (adjusted p-value) เพิ่มจาก p-value ดิบ:
@@ -73,7 +73,7 @@ from pathlib import Path
 try:
     from scipy import stats
 except ImportError:
-    print("❌ ต้องติดตั้ง scipy ก่อน: pip install scipy --break-system-packages")
+    print("ต้องติดตั้ง scipy ก่อน: pip install scipy --break-system-packages")
     sys.exit(1)
 
 
@@ -83,7 +83,6 @@ def load_results(path: str) -> list[dict]:
 
 
 def _get_score(item: dict, metric_path: list[str]):
-    """เดินตาม path เช่น ["ragas","faithfulness","score"] — คืน None ถ้าไม่มี"""
     val = item
     for key in metric_path:
         val = val.get(key) if isinstance(val, dict) else None
@@ -93,14 +92,6 @@ def _get_score(item: dict, metric_path: list[str]):
 
 
 def align_by_id(a_data: list[dict], b_data: list[dict]) -> list[tuple]:
-    """จับคู่ผลลัพธ์ 2 ไฟล์ด้วย "id" ของคำถาม — คืน [(id, a_item, b_item), ...]
-    เรียงตาม id
-
-    (แก้ 2026-07-23: เดิมจับคู่ด้วย "ตำแหน่งในลิสต์" ซึ่งอันตรายมาก เพราะ
-    run_baseline_eval.py มี auto-resume และ "ข้ามคำถามที่ตอบไม่สำเร็จ"
-    (continue) ได้ ทำให้ 2 ไฟล์อาจมีจำนวน/ลำดับข้อไม่ตรงกัน แล้ว paired test
-    จะจับคู่ผิดคำถามแบบเงียบ ๆ ผลสถิติที่ได้จะไม่มีความหมายเลยโดยไม่มีอะไรเตือน)
-    """
     a_map = {item.get("id"): item for item in a_data if item.get("id") is not None}
     b_map = {item.get("id"): item for item in b_data if item.get("id") is not None}
 
@@ -109,7 +100,7 @@ def align_by_id(a_data: list[dict], b_data: list[dict]) -> list[tuple]:
     only_b = sorted(set(b_map) - set(a_map))
 
     if only_a or only_b:
-        print("⚠️  สองไฟล์มีคำถามไม่ตรงกัน — จะเทียบเฉพาะข้อที่มีครบทั้งคู่")
+        print("สองไฟล์มีคำถามไม่ตรงกัน — จะเทียบเฉพาะข้อที่มีครบทั้งคู่")
         if only_a:
             print(f"    มีเฉพาะในไฟล์ A ({len(only_a)} ข้อ): {only_a}")
         if only_b:
@@ -117,14 +108,13 @@ def align_by_id(a_data: list[dict], b_data: list[dict]) -> list[tuple]:
         print()
 
     if not common:
-        print("❌ ไม่มีคำถามที่ตรงกันเลยระหว่าง 2 ไฟล์ — เทียบไม่ได้")
+        print("ไม่มีคำถามที่ตรงกันเลยระหว่าง 2 ไฟล์ — เทียบไม่ได้")
         sys.exit(1)
 
     return [(qid, a_map[qid], b_map[qid]) for qid in common]
 
 
 def _clean_p(p):
-    """คืน None ถ้า p เป็น None หรือ nan — ไม่งั้นคืน p ตามเดิม (แปลงเป็น float)"""
     if p is None:
         return None
     p = float(p)
@@ -132,14 +122,6 @@ def _clean_p(p):
 
 
 def paired_compare(name: str, a_scores: list, b_scores: list) -> dict:
-    """คำนวณ paired t-test + Wilcoxon signed-rank สำหรับ 1 metric — คืนค่าเป็น dict
-    แทนการ print ตรง ๆ (ต่างจากเดิม) เพื่อให้ผู้เรียกเก็บ p-value ของหลายการทดสอบ
-    ไปทำ Benjamini-Hochberg correction รวมกันได้ก่อนค่อยแสดงผลจริง
-
-    (แก้ 2026-08-14) ตรวจ zero-variance ที่ต้นทาง: ถ้าผลต่างทุกคู่ = 0 (KG ไม่เปลี่ยน
-    คำตอบกลุ่มนี้เลย) จะไม่เรียก t-test/Wilcoxon เพราะไม่มีอะไรให้ทดสอบ และ scipy
-    จะคืน nan + ขึ้น RuntimeWarning — ทำเครื่องหมาย zero_variance=True แทน
-    """
     pairs = [(a, b) for a, b in zip(a_scores, b_scores) if a is not None and b is not None]
     if len(pairs) < 3:
         return {"name": name, "n": len(pairs), "insufficient": True, "zero_variance": False}
@@ -148,7 +130,6 @@ def paired_compare(name: str, a_scores: list, b_scores: list) -> dict:
     b = [p[1] for p in pairs]
     mean_a, mean_b = sum(a) / len(a), sum(b) / len(b)
 
-    # ── ตรวจ zero-variance: ผลต่างทุกคู่ = 0 → ไม่มีอะไรให้ทดสอบ ──
     diffs = [x - y for x, y in zip(a, b)]
     if all(abs(d) < 1e-12 for d in diffs):
         return {
@@ -156,22 +137,16 @@ def paired_compare(name: str, a_scores: list, b_scores: list) -> dict:
             "mean_a": mean_a, "mean_b": mean_b,
             "t_stat": None, "t_p": None, "w_stat": None, "w_p": None,
         }
-
-    # paired t-test (เผื่อ nan ด้วยเหตุอื่น → แปลงเป็น None ทันที ไม่ปล่อยให้ไหลต่อ)
     t_stat, t_p = stats.ttest_rel(a, b)
     t_p = _clean_p(t_p)
     if t_p is None:
         t_stat = None
-
-    # Wilcoxon signed-rank
     try:
         w_stat, w_p = stats.wilcoxon(a, b)
         w_p = _clean_p(w_p)
         if w_p is None:
             w_stat = None
     except ValueError:
-        # Wilcoxon พังถ้าผลต่างทุกคู่เป็น 0 หมด (ดักด้วย zero-variance ข้างบนแล้ว
-        # แต่คงไว้กันเหนียวเผื่อ scipy บางเวอร์ชัน raise ก่อนถึงตรงนี้)
         w_stat, w_p = None, None
 
     return {
@@ -189,21 +164,6 @@ def paired_compare(name: str, a_scores: list, b_scores: list) -> dict:
 
 
 def _bh_correct(p_values: list) -> list:
-    """Benjamini-Hochberg correction — คืน q-value (adjusted p-value) เรียงตรงตำแหน่ง
-    เดิมกับ p_values ที่ส่งเข้ามา ค่า None หรือ nan (เช่น Wilcoxon ที่ข้ามเพราะผลต่าง
-    เท่ากันหมด หรือ t-test ที่เจอ zero-variance) จะไม่ถูกนับรวมในการ correct และคืน
-    เป็น None เหมือนเดิม
-
-    (แก้ 2026-08-14) เดิมกรองแค่ None → nan เล็ดลอดเข้ามาทำให้ sort/min เพี้ยนทั้งชุด
-    ตอนนี้กรองทั้ง None และ nan และมี assert q >= p กันบั๊กชนิดนี้กลับมาเงียบ ๆ
-
-    ขั้นตอน (Benjamini & Hochberg, 1995):
-    1. เรียง p-value จากน้อยไปมาก อันดับ i = 1..m
-    2. q_(i) เริ่มต้น = p_(i) * m / i
-    3. บังคับ monotonicity โดยเดินจากอันดับมากสุดย้อนกลับมาอันดับ 1 แล้วเก็บค่า
-       ต่ำสุดสะสม (เพราะ q ต้องไม่ลดลงเมื่อ p มากขึ้น)
-    4. ตัด cap ที่ 1.0
-    """
     idx_p = [
         (i, float(p))
         for i, p in enumerate(p_values)
@@ -213,7 +173,7 @@ def _bh_correct(p_values: list) -> list:
         return [None] * len(p_values)
 
     m = len(idx_p)
-    ranked = sorted(idx_p, key=lambda t: t[1])  # (original_index, p) เรียงจาก p น้อย->มาก
+    ranked = sorted(idx_p, key=lambda t: t[1])  
 
     raw_q = [p * m / (rank + 1) for rank, (_, p) in enumerate(ranked)]
 
@@ -226,16 +186,12 @@ def _bh_correct(p_values: list) -> list:
     result = [None] * len(p_values)
     for (orig_idx, p), q in zip(ranked, adjusted):
         q_capped = min(q, 1.0)
-        # BH ต้องได้ q >= p เสมอ — ถ้าไม่ใช่ แปลว่ามีบั๊กในการคำนวณ
         assert q_capped >= p - 1e-9, f"BH ผิดพลาด: q={q_capped} < p={p} (idx={orig_idx})"
         result[orig_idx] = q_capped
     return result
 
 
 def _print_result(r: dict, t_q: float | None = None, w_q: float | None = None) -> None:
-    """แสดงผล 1 การเปรียบเทียบ — ถ้ามี q-value (หลัง BH correction) ส่งมาด้วย
-    จะโชว์คู่กับ p-value ดิบ ให้เห็นทั้งสองค่า
-    """
     if r["insufficient"]:
         print(f"\n[{r['name']}] ข้อมูลไม่พอสำหรับทดสอบสถิติ (n={r['n']}, ต้องการอย่างน้อย 3)")
         return
@@ -245,7 +201,6 @@ def _print_result(r: dict, t_q: float | None = None, w_q: float | None = None) -
     print(f"  ค่าเฉลี่ยระบบ B (เทียบ):     {r['mean_b']:.4f}")
     print(f"  ผลต่าง (B - A):            {r['mean_b'] - r['mean_a']:+.4f}")
 
-    # (แก้ 2026-08-14) กลุ่มที่ KG ไม่เปลี่ยนคำตอบเลย → ไม่ทดสอบสถิติ
     if r.get("zero_variance"):
         print("  ผลต่างทุกคู่ = 0 (ระบบให้คะแนนเท่ากันทุกข้อ) — ไม่ต้องทดสอบสถิติ")
         return
@@ -268,18 +223,12 @@ def _print_result(r: dict, t_q: float | None = None, w_q: float | None = None) -
 
 
 def _tests_entering_bh(valid: list[dict]) -> tuple[int, int]:
-    """นับจำนวนการทดสอบที่ "เข้าครอบครัว BH จริง" (p ไม่ใช่ None/nan)
-    แยก t-test กับ Wilcoxon — ใช้แสดงจำนวนที่ถูกต้อง (ไม่รวม zero-variance)
-    """
     n_t = sum(1 for r in valid if _clean_p(r.get("t_p")) is not None)
     n_w = sum(1 for r in valid if _clean_p(r.get("w_p")) is not None)
     return n_t, n_w
 
 
 def _report_with_correction(results: list[dict]) -> None:
-    """แสดงผลของหลายการทดสอบพร้อมกัน + คำนวณ q-value ด้วย BH correction
-    แก้แยก 'ครอบครัว' ระหว่าง t-test กับ Wilcoxon (คนละสมมติฐานทางสถิติ ไม่ปนกัน)
-    """
     valid = [r for r in results if not r["insufficient"]]
     t_q_list = _bh_correct([r.get("t_p") for r in valid])
     w_q_list = _bh_correct([r.get("w_p") for r in valid])
@@ -307,22 +256,13 @@ METRICS = {
 
 
 def split_by_type(baseline_path: str, kg_path: str, type_key: str = "type"):
-    """แยกผลตามกลุ่มคำถาม — ดูว่า KG ช่วยเฉพาะกลุ่ม multi-hop จริงไหม
 
-    ⚠️ โหมดนี้ทดสอบสถิติ (จำนวนกลุ่มคำถาม x 3 metric) ครั้ง พร้อมกัน ความเสี่ยงเจอ
-    นัยสำคัญปลอมสูงกว่าโหมดภาพรวมมาก จึงรวม BH correction ข้าม "ทุกกลุ่มคำถาม x
-    ทุก metric" เป็นชุดเดียวกัน ก่อนสรุปผล
-
-    หมายเหตุ: การ correct รวมทุกกลุ่มแบบนี้เป็น exploratory ที่ conservative มาก
-    ถ้ามีสมมติฐานหลักที่ตั้งไว้ล่วงหน้า (เช่น multi_hop_kg) แนะนำดูโหมด --planned
-    ควบคู่ด้วย (correct เฉพาะภายในกลุ่มนั้น ไม่ถูกกลุ่ม exploratory เจือจาง)
-    """
     pairs = align_by_id(load_results(baseline_path), load_results(kg_path))
     print(f"🔗 จับคู่คำถามด้วย id ได้ {len(pairs)} ข้อ\n")
 
     types = sorted({a.get(type_key) for _, a, _ in pairs if a.get(type_key)})
 
-    all_entries = []  # list ของ (type, result_dict) เรียงตามลำดับที่จะแสดงผล
+    all_entries = []  
     for t in types:
         subset = [(a, b) for _, a, b in pairs if a.get(type_key) == t]
         for name, path_keys in METRICS.items():
@@ -349,31 +289,25 @@ def split_by_type(baseline_path: str, kg_path: str, type_key: str = "type"):
 
     n_t, n_w = _tests_entering_bh(valid)
     if n_t + n_w > 0:
-        print(f"\nℹ️  แก้ปัญหา multiple comparisons ด้วย Benjamini-Hochberg correction")
+        print(f"\n  แก้ปัญหา multiple comparisons ด้วย Benjamini-Hochberg correction")
         print(f"   ครอบคลุม {n_t} การทดสอบ t-test และ {n_w} การทดสอบ Wilcoxon")
         print(f"   (ทุกกลุ่มคำถาม x ทุก metric ที่มีผลต่างจริง รวมกันเป็นชุดเดียว) — ดู q-value เป็นหลัก")
         print(f"   * กลุ่มที่ผลต่างทุกคู่ = 0 ไม่นับเข้าการทดสอบ")
-        print(f"\n💡 สำหรับสมมติฐานหลักที่ตั้งไว้ล่วงหน้า ดูโหมด planned เพิ่ม:")
+        print(f"\n สำหรับสมมติฐานหลักที่ตั้งไว้ล่วงหน้า ดูโหมด planned เพิ่ม:")
         print(f"   python -m src.eval.compare_stats {baseline_path} {kg_path} --planned multi_hop_kg")
 
 
 def planned_family(baseline_path: str, kg_path: str, target_type: str, type_key: str = "type"):
-    """โหมด planned comparison — correct BH เฉพาะภายใน 3 metrics ของกลุ่มคำถามเดียว
-    ที่เป็นสมมติฐานหลักตั้งไว้ล่วงหน้า (เช่น multi_hop_kg ที่ KG ถูกออกแบบมาให้ช่วย)
 
-    เหตุผล: การเอา planned hypothesis ไป correct รวมกับการทดสอบ exploratory อีก
-    หลายสิบตัว (โหมด --by-type) เป็นการลงโทษที่เข้มเกินไป (over-conservative)
-    มาตรฐานสถิติแยกการทดสอบที่ตั้งไว้ล่วงหน้าออกจาก exploratory และ correct แยกครอบครัว
-    """
     pairs = align_by_id(load_results(baseline_path), load_results(kg_path))
     subset = [(a, b) for _, a, b in pairs if a.get(type_key) == target_type]
 
-    print(f"🎯 planned comparison: กลุ่ม '{target_type}'  (n={len(subset)} ข้อ)")
+    print(f" planned comparison: กลุ่ม '{target_type}'  (n={len(subset)} ข้อ)")
     print(f"   correct BH เฉพาะภายใน 3 metrics ของกลุ่มนี้ (แยกจาก exploratory กลุ่มอื่น)\n")
 
     if not subset:
         avail = sorted({a.get(type_key) for _, a, _ in pairs if a.get(type_key)})
-        print(f"❌ ไม่พบคำถาม type='{target_type}'")
+        print(f" ไม่พบคำถาม type='{target_type}'")
         print(f"   type ที่มีให้เลือก: {avail}")
         sys.exit(1)
 
@@ -394,13 +328,13 @@ def main():
 
     baseline_path, kg_path = sys.argv[1], sys.argv[2]
     if not Path(baseline_path).exists() or not Path(kg_path).exists():
-        print("❌ ไม่พบไฟล์ผลลัพธ์ — ต้องรัน run_baseline_eval.py และ run_kg_eval.py ก่อน")
+        print(" ไม่พบไฟล์ผลลัพธ์ — ต้องรัน run_baseline_eval.py และ run_kg_eval.py ก่อน")
         sys.exit(1)
 
     if "--planned" in sys.argv:
         i = sys.argv.index("--planned")
         if i + 1 >= len(sys.argv):
-            print("❌ --planned ต้องตามด้วยชื่อ type เช่น --planned multi_hop_kg")
+            print(" --planned ต้องตามด้วยชื่อ type เช่น --planned multi_hop_kg")
             sys.exit(1)
         planned_family(baseline_path, kg_path, sys.argv[i + 1])
         return
@@ -424,7 +358,7 @@ def main():
 
     _report_with_correction(results)
 
-    print("\n💡 อยากดูแยกตามกลุ่มคำถาม รันเพิ่ม:")
+    print("\n อยากดูแยกตามกลุ่มคำถาม รันเพิ่ม:")
     print(f"   python -m src.eval.compare_stats {baseline_path} {kg_path} --by-type")
 
 

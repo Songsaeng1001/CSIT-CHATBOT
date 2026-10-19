@@ -1,26 +1,3 @@
-"""
-ragas_metrics.py — คำนวณ RAGAS 3 ตัวชี้วัด (Faithfulness, Answer Relevance,
-Context Relevance) ตามสูตรต้นฉบับจากเปเปอร์:
-
-    Es, S., James, J., Espinosa-Anke, L., & Schockaert, S. (2024).
-    "RAGAs: Automated Evaluation of Retrieval Augmented Generation."
-    Proceedings of EACL 2024: System Demonstrations, 150-158.
-    DOI: 10.18653/v1/2024.eacl-demo.16
-
-ต้นฉบับใช้ gpt-3.5-turbo-16k เป็น judge + text-embedding-ada-002 เป็น embedding
-เวอร์ชันนี้สลับมาใช้ Gemini (ตัวเดียวกับที่โปรเจกต์ใช้ตอบจริงใน src/chat.py)
-เป็นทั้ง judge และ embedding เพื่อไม่ต้องพึ่ง API ของ OpenAI เพิ่ม
-
-หลักการ 3 สูตร (อ้างอิงจากเปเปอร์ตรง ๆ):
-    Faithfulness      F  = |V| / |S|
-    Answer Relevance  AR = (1/n) * sum_i sim(q, q_i)
-    Context Relevance CR = |S_extracted| / (จำนวนประโยคทั้งหมดใน context)
-
-หมายเหตุ (แก้ 2026-07-14): Google ยกเลิกโมเดล models/text-embedding-004
-ไปตั้งแต่ 14 ม.ค. 2026 (API คืน 404 NOT_FOUND) เปลี่ยนมาใช้
-models/gemini-embedding-001 ซึ่งเป็นโมเดลที่ Google แนะนำให้ใช้แทนแล้ว
-"""
-
 import re
 import json
 import numpy as np
@@ -30,7 +7,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config import GOOGLE_API_KEY
 
-# ─── LLM judge + embedding (โหลดครั้งเดียว, cache ไว้แบบเดียวกับ src/chat.py) ───
 _judge_llm = None
 _embed_model = None
 
@@ -38,7 +14,6 @@ _embed_model = None
 def get_judge_llm():
     global _judge_llm
     if _judge_llm is None:
-        # temperature=0 เพราะอยากให้ judge ตัดสินคงที่ ไม่สุ่ม (ต่างจาก chat.py ที่ตอบผู้ใช้จริงใช้ 0.3)
         _judge_llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-lite",
             temperature=0,
@@ -68,11 +43,6 @@ def _strip_code_fence(raw: str) -> str:
     """LLM บางทีตอบ JSON ห่อด้วย ```json ... ``` — ตัดออกก่อน parse"""
     return re.sub(r"^```(json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE).strip()
 
-
-# ═══════════════════════════════════════════════════════
-# 1. Faithfulness — F = |V| / |S|
-# ═══════════════════════════════════════════════════════
-
 STATEMENT_EXTRACT_PROMPT = """คุณเป็นผู้ช่วยแตกคำตอบให้เป็น "ข้อความย่อย" (statement)
 แต่ละข้อความย่อยต้องเป็นข้อเท็จจริงเดี่ยว ๆ ที่ตรวจสอบได้ทีละอัน
 ตอบเป็น JSON list ของ string เท่านั้น เช่น ["ข้อความย่อยที่ 1", "ข้อความย่อยที่ 2"]
@@ -99,7 +69,6 @@ def extract_statements(question: str, answer: str) -> list[str]:
             return [str(s) for s in statements]
     except Exception:
         pass
-    # fallback: ถ้า LLM ไม่ยอมตอบ JSON ให้แตกตามประโยคเอาเอง (คร่าว ๆ กันสคริปต์พัง)
     return [s.strip() for s in re.split(r"[.\n]", answer) if s.strip()]
 
 
@@ -135,8 +104,6 @@ def verify_statements_batch(statements: list[str], context: str) -> list[bool]:
             ]
     except Exception:
         pass
-
-    # fallback: parse ไม่ได้หรือจำนวนไม่ตรง กันสคริปต์พังด้วยการเรียกทีละอัน
     return [verify_statement(s, context) for s in statements]
 
 
@@ -157,11 +124,6 @@ def faithfulness_score(question: str, answer: str, context: str) -> dict:
         "details": details,
     }
 
-
-# ═══════════════════════════════════════════════════════
-# 2. Answer Relevance — AR = (1/n) * sum sim(q, q_i)
-# ═══════════════════════════════════════════════════════
-
 QUESTION_GEN_PROMPT = """จากคำตอบต่อไปนี้ ให้สร้างคำถามที่เป็นไปได้ 1 ข้อ
 ที่คำตอบนี้น่าจะเป็นคำตอบของคำถามนั้น
 ตอบเป็นคำถามเดียว บรรทัดเดียวเท่านั้น ห้ามมีคำอธิบายอื่นปนมา"""
@@ -178,7 +140,6 @@ def _cosine(a, b) -> float:
 
 
 def answer_relevance_score(question: str, answer: str, n: int = 3) -> dict:
-    """AR = ค่าเฉลี่ย cosine similarity ระหว่างคำถามจริง กับคำถามที่ LLM ย้อนสร้างจากคำตอบ n ข้อ"""
     generated_qs = [generate_question_from_answer(answer) for _ in range(n)]
     embed = get_embed_model()
     q_vec = embed.embed_query(question)
@@ -193,11 +154,6 @@ def answer_relevance_score(question: str, answer: str, n: int = 3) -> dict:
         "generated_questions": generated_qs,
         "similarities": sims,
     }
-
-
-# ═══════════════════════════════════════════════════════
-# 3. Context Relevance — CR = |S| / total_sentences
-# ═══════════════════════════════════════════════════════
 
 EXTRACT_RELEVANT_PROMPT = """จาก context ต่อไปนี้ ให้คัดลอกเฉพาะประโยค/บรรทัดที่
 "จำเป็นต่อการตอบคำถามนี้จริง ๆ" มาเท่านั้น (คัดลอกคำต่อคำ ห้ามแต่งใหม่)
@@ -232,18 +188,7 @@ def context_relevance_score(question: str, context: str) -> dict:
         "relevant_sentences": relevant,
     }
 
-
-# ═══════════════════════════════════════════════════════
-# รวมทั้ง 3 ตัวชี้วัดในฟังก์ชันเดียว
-# ═══════════════════════════════════════════════════════
-
 def evaluate_single(question: str, answer: str, context: str, n_questions: int = 3) -> dict:
-    """คำนวณ Faithfulness + Answer Relevance + Context Relevance ต่อ 1 คู่คำถาม-คำตอบ-context
-
-    หมายเหตุ: แต่ละครั้งเรียก LLM ~ (1 + จำนวน statement) + n_questions + 1 ครั้ง
-    ถ้าชุดทดสอบใหญ่ (เช่น 100 คำถาม) อาจใช้เวลา/token พอสมควร ลอง n_questions=1-2
-    แทน 3 ได้ถ้าอยากประหยัดตอนทดสอบรอบแรก ๆ
-    """
     return {
         "question": question,
         "answer": answer,

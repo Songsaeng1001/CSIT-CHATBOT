@@ -17,7 +17,7 @@
     "id": 3,
     "question": "อาจารย์วินัย วงษ์ไทย อยู่ห้องไหน จบการศึกษาจากที่ไหนบ้าง",
     "type": "instructor_info",
-    "gold_answer": "ห้องทำงาน SC2-417 จบจาก University of Newcastle Upon Tyne สาขา Computer Science, University of Newcastle Upon Tyne สาขา System Design for Internet Applications และมหาวิทยาลัยนเรศวร สาขาวิทยาการคอมพิวเตอร์",
+    "gold_answer": "ห้องทำงาน SC2-417 จบจาก University of Newcastle Upon Tyne สาขา Computer Science (Ph.D.), University of Newcastle Upon Tyne สาขา System Design for Internet Applications (M.Sc.), Asia Institute of Technology สาขา Computer Science (M.Sc.) และมหาวิทยาลัยนเรศวร สาขาวิทยาการคอมพิวเตอร์ (วท.บ.)",
     "expected_source_file": "staff_csit.md"
   },
   {
@@ -269,7 +269,7 @@
     "id": 39,
     "question": "ติดต่อหน่วยสหกิจศึกษาคณะวิทยาศาสตร์ได้ที่ไหน",
     "type": "coop_education",
-    "gold_answer": "นายนิพิฐทภัทร ทัดหล่อ (พี่ไกร) นักวิชาการศึกษา โทร 055-963141 มือถือ 086-587-6293 อีเมล CoopSC@nu.ac.th เว็บไซต์ https://www.sci.nu.ac.th/coop/",
+    "gold_answer": "นายนิพิฐทภัทร ทัดหล่อ (พี่ไกร) นักวิชาการศึกษา หน่วยสหกิจศึกษา คณะวิทยาศาสตร์ โทร 055-963141 มือถือ 086-587-6293 อีเมล CoopSC@nu.ac.th เว็บไซต์สมัครสหกิจ https://sci-nu-coop.vercel.app/login",
     "expected_source_file": "08_coop_education.md"
   },
   {
@@ -277,28 +277,32 @@
     "question": "ผู้กู้ กยศ. ต้องทำชั่วโมงจิตอาสากี่ชั่วโมงต่อปี",
     "type": "loan_kyo_so",
     "gold_answer": "ไม่น้อยกว่า 36 ชั่วโมงต่อปี ในช่วง 1 พฤษภาคม ถึง 30 เมษายนปีถัดไป เป็นจิตอาสาด้านจิตสาธารณะเท่านั้น",
-    "expected_source_file": "faq_loan_kyo_so.md"
+    "expected_source_file": "faq_loan_kyo_so.md",
+    "note": "คำถามนี้มีคำที่ตรง keyword กยศ. ระบบจึง redirect ด้วยข้อความแม่แบบใน rules.yaml (ไม่ค้น faq_loan_kyo_so.md)"
   },
   {
     "id": 41,
     "question": "ลืมรหัสผ่าน กยศ. ต้องทำยังไง",
     "type": "loan_kyo_so",
     "gold_answer": "เปิดแอปพลิเคชัน กยศ. Connect กดปุ่ม \"ลืมรหัสผ่าน\" แล้วใช้เลขบัตรประจำตัวประชาชนร่วมกับอีเมลหรือหมายเลขโทรศัพท์ที่ลงทะเบียนไว้",
-    "expected_source_file": "faq_loan_kyo_so.md"
+    "expected_source_file": "faq_loan_kyo_so.md",
+    "note": "คำถามนี้มีคำที่ตรง keyword กยศ. ระบบจึง redirect ด้วยข้อความแม่แบบใน rules.yaml (ไม่ค้น faq_loan_kyo_so.md)"
   },
   {
     "id": 42,
     "question": "ค่าครองชีพของผู้กู้ กยศ. โอนเข้าบัญชีภายในกี่วัน",
     "type": "loan_kyo_so",
     "gold_answer": "ธนาคารกรุงไทยโอนเข้าบัญชีนิสิตภายใน 30 วันหลังจาก upload สัญญาเข้าสู่ระบบ",
-    "expected_source_file": "faq_loan_kyo_so.md"
+    "expected_source_file": "faq_loan_kyo_so.md",
+    "note": "คำถามนี้มีคำที่ตรง keyword กยศ. ระบบจึง redirect ด้วยข้อความแม่แบบใน rules.yaml (ไม่ค้น faq_loan_kyo_so.md)"
   },
   {
     "id": 43,
     "question": "ติดต่อเจ้าหน้าที่ กยศ. คณะวิทยาศาสตร์ได้ที่ใคร",
     "type": "loan_kyo_so",
     "gold_answer": "นางสาวปิยารมณ์ ครองราช (พี่มะนาว) โทร 055-963152 อีเมล piyaromk@nu.ac.th ห้องทำงาน SC1 ห้องกิจการนิสิตและศิษย์เก่าสัมพันธ์",
-    "expected_source_file": "faq_loan_kyo_so.md"
+    "expected_source_file": "faq_loan_kyo_so.md",
+    "note": "คำถามนี้มีคำที่ตรง keyword กยศ. ระบบจึง redirect ด้วยข้อความแม่แบบใน rules.yaml (ไม่ค้น faq_loan_kyo_so.md)"
   },
   {
     "id": 44,
@@ -333,7 +337,8 @@
     "question": "อัตราดอกเบี้ย กยศ. ตอนนี้กี่เปอร์เซ็นต์",
     "type": "redirect_no_data",
     "gold_answer": "ระบบไม่ได้เก็บรายละเอียดที่เปลี่ยนแปลงบ่อยแบบนี้ไว้ ควรตรวจสอบจากเว็บไซต์กองทุน กยศ. มหาวิทยาลัยนเรศวร https://www.acad.nu.ac.th/studentloan/ หรือติดต่อเจ้าหน้าที่ กยศ. คณะวิทยาศาสตร์โดยตรง",
-    "expected_source_file": "faq_loan_kyo_so.md"
+    "expected_source_file": "faq_loan_kyo_so.md",
+    "note": "คำถามนี้มีคำที่ตรง keyword กยศ. ระบบจึง redirect ด้วยข้อความแม่แบบใน rules.yaml (ไม่ค้น faq_loan_kyo_so.md)"
   },
   {
     "id": 49,
@@ -423,7 +428,7 @@
     "id": 61,
     "question": "อาจารย์จบเอกคอมพิวเตอร์มีใครบ้าง",
     "type": "multi_hop_kg_negative",
-    "gold_answer": "คำว่า 'เอก' ในคำถามนี้หมายถึงสาขาวิชาเอก ไม่ใช่ปริญญาเอก ควรตอบด้วยข้อมูลสาขาที่อาจารย์เชี่ยวชาญ ไม่ใช่รายชื่อผู้จบปริญญาเอกต่างประเทศ",
+    "gold_answer": "คำว่า 'เอก' ในคำถามนี้หมายถึงสาขาวิชาเอก ไม่ใช่ปริญญาเอก ระบบไม่ควรตอบด้วยรายชื่ออาจารย์ที่จบปริญญาเอกต่างประเทศ และไม่ควรสรุปว่าอาจารย์ทุกท่านจบวิชาเอกคอมพิวเตอร์ ควรตอบตามวุฒิการศึกษาที่มีในข้อมูล หรือถามกลับให้ชัดเจน",
     "expected_source_file": "staff_csit.md"
   },
   {
@@ -431,6 +436,161 @@
     "question": "อาจารย์ที่จบปริญญาเอกในประเทศไทยมีใครบ้าง",
     "type": "multi_hop_kg_negative",
     "gold_answer": "มี 6 ท่าน ได้แก่ ผศ.ดร.เกรียงศักดิ์ เตมีย์ (สจล.), ผศ.ดร.สุธาสินี จิตต์อนันต์ (ม.เกษตรศาสตร์), ผศ.ดร.ธนะธร พ่อค้า (จุฬาฯ), ดร.ณัฐพล คุ้มใหญ่โต (ม.นเรศวร), ดร.พัชรี ดุลนิมิตร (จุฬาฯ) และ ดร.ลิมปพัทธ์ บุษบัน (ม.เชียงใหม่)",
+    "expected_source_file": "staff_csit.md",
+    "note": "ตรวจพบว่าคำถามนี้ trigger sqlite_kg_foreign_phd (over-trigger) ในโค้ดปัจจุบัน"
+  },
+  {
+    "id": 63,
+    "question": "GPA 3.55 จะได้เกียรตินิยมอันดับอะไร",
+    "type": "rule_calc",
+    "gold_answer": "ได้เกียรตินิยมอันดับหนึ่ง (GPA ตั้งแต่ 3.50 ขึ้นไป) โดยต้องไม่เคยได้ F หรือ U ไม่เคยลงทะเบียนเรียนซ้ำ และเทียบโอนไม่เกิน 1 ใน 6 ของหน่วยกิตรวม",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 64,
+    "question": "ลงทะเบียนช้าไป 7 วันต้องเสียค่าปรับเท่าไหร่",
+    "type": "rule_calc",
+    "gold_answer": "ค่าปรับวันละ 25 บาท ช้า 7 วันเสียค่าปรับ 175 บาท ยังลงทะเบียนล่าช้าได้เพราะยังไม่เกิน 2 สัปดาห์แรกของภาคเรียน",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 65,
+    "question": "ภาคปกติอยากลง 24 หน่วยกิตได้ไหม",
+    "type": "rule_calc",
+    "gold_answer": "เกินเกณฑ์สูงสุด 22 หน่วยกิตของภาคปกติไป 2 หน่วยกิต ต้องยื่นคำร้องทั่วไป NU18 ขอลงทะเบียนเรียนมากกว่าเกณฑ์ ผ่านอาจารย์ที่ปรึกษาและคณบดี",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 66,
+    "question": "GPA 1.65 เรียนมาแล้ว 3 ภาค สถานภาพนิสิตเป็นยังไง",
+    "type": "rule_calc",
+    "gold_answer": "สถานภาพรอพินิจ เพราะ GPA ต่ำกว่า 2.00 แต่ยังไม่พ้นสภาพ (เกณฑ์พ้นสภาพคือไม่ถึง 1.50 เมื่อครบ 2 ภาค หรือไม่ถึง 1.75 เมื่อครบ 4 ภาคขึ้นไป)",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 67,
+    "question": "อาจารย์ CSIT ที่สำเร็จการศึกษาระดับปริญญาเอกจากต่างประเทศมีกี่ท่าน ใครบ้าง",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
     "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 68,
+    "question": "ขอรายชื่ออาจารย์ที่ได้ Ph.D. จากต่างประเทศ",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 69,
+    "question": "อาจารย์ที่ไปเรียนปริญญาเอกที่ต่างประเทศมีกี่คน",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 70,
+    "question": "มีอาจารย์ภาควิชาที่จบ ดุษฎีบัณฑิต จากมหาวิทยาลัยเมืองนอกบ้างไหม",
+    "type": "multi_hop_kg",
+    "gold_answer": "มี 9 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ เสน่ห์ นมะหุต (University of Liverpool, UK), รศ.ดร.ไกรศักดิ์ เกษร (Queen Mary University, UK), รศ.ดร.จรัสศรี รุ่งรัตนาอุบล (Warwick University, UK), ผศ.ดร.จันทร์จิรา พยัคฆ์เพศ (Murdoch University, Australia), ผศ.ดร.อนงค์พร ไศลวรากุล (University of Birmingham, UK), ผศ.ดร.วินัย วงษ์ไทย (University of Newcastle Upon Tyne, UK), ผศ.ดร.สัญญา เครือหงษ์ (University of Technology Sydney, Australia), ผศ.ดร.วันสุรีย์ มาศกรัม (University of Hawaii at Manoa, USA) และ ดร.เอกสิทธิ์ เทียมแก้ว (University of Nevada Reno, USA)",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 71,
+    "question": "อาจารย์สุธาสินีจบปริญญาเอกจากที่ไหน",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "ผศ.ดร.สุธาสินี จิตต์อนันต์ จบปริญญาเอก (วศ.ด.) สาขาวิศวกรรมคอมพิวเตอร์ จากมหาวิทยาลัยเกษตรศาสตร์ ประเทศไทย",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 72,
+    "question": "อาจารย์ที่จบปริญญาโทจากต่างประเทศมีใครบ้าง",
+    "type": "multi_hop_kg_negative",
+    "gold_answer": "มี 7 ท่าน ได้แก่ รศ.ดร.จักรกฤษณ์ (University of Newcastle Upon Tyne, UK), รศ.ดร.จรัสศรี (Warwick University, UK), ผศ.ดร.จันทร์จิรา (University of Wollongong, Australia), ผศ.ดร.วินัย (University of Newcastle Upon Tyne, UK), ผศ.ดร.วันสุรีย์ (Carnegie Mellon University, USA), ดร.เอกสิทธิ์ (Carnegie Mellon University, USA) และอาจารย์อดิเรก (Griffith University, Australia) ไม่ควรตอบด้วยรายชื่อผู้จบปริญญาเอกต่างประเทศ",
+    "expected_source_file": "staff_csit.md"
+  },
+  {
+    "id": 73,
+    "question": "กองบริการการศึกษาเปิดทำการวันไหน กี่โมง",
+    "type": "contact_info",
+    "gold_answer": "วันจันทร์ถึงวันศุกร์ เวลา 08.30-16.30 น. ยกเว้นวันหยุดราชการและวันหยุดนักขัตฤกษ์ อีเมล acad@nu.ac.th",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 74,
+    "question": "อยากย้ายเข้าสาขาวิทยาการคอมพิวเตอร์ต้องมีคุณสมบัติอะไร",
+    "type": "contact_info",
+    "gold_answer": "วิชาคณิตศาสตร์สำหรับวิทยาศาสตร์ไม่ต่ำกว่า C วิชาพื้นฐานการเขียนโปรแกรมไม่ต่ำกว่า B GPAX ไม่ต่ำกว่า 2.0 และผ่านการพิจารณาจากคณะกรรมการอาจารย์ผู้รับผิดชอบหลักสูตร (ตั้งแต่ภาคเรียนที่ 1 ปีการศึกษา 2567)",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 75,
+    "question": "ลืมรหัสผ่านเข้า nu-mail กับ reg ต้องไปที่ไหน",
+    "type": "contact_info",
+    "gold_answer": "งานระบบเครือข่าย (CITCOMS) โทร 0-5596-1512 ที่อาคาร CITCOMS",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 76,
+    "question": "อยากได้ใบเสร็จค่าเทอมต้องไปที่หน่วยงานไหน",
+    "type": "contact_info",
+    "gold_answer": "กองคลัง โทร 0-5596-1135 ที่อาคารมิ่งขวัญ ชั้น 1",
+    "expected_source_file": "contact_office.md"
+  },
+  {
+    "id": 77,
+    "question": "ต้องเข้าเรียนกี่เปอร์เซ็นต์ถึงจะมีสิทธิ์สอบ",
+    "type": "student_status",
+    "gold_answer": "ไม่ต่ำกว่าร้อยละ 80 ของเวลาเรียนทั้งหมด ถ้าไม่ถึงจะได้ระดับขั้น F หรืออักษร U",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 78,
+    "question": "ได้อักษร I ต้องแก้ภายในเมื่อไหร่ ถ้าไม่แก้จะเป็นยังไง",
+    "type": "student_status",
+    "gold_answer": "ต้องแก้ภายใน 4 สัปดาห์หลังเปิดภาคการศึกษาถัดไป ถ้าไม่แก้จะเปลี่ยนเป็น F หรือ U",
+    "expected_source_file": "faq_status.md"
+  },
+  {
+    "id": 79,
+    "question": "อยากเพิ่มรายวิชาหลังพ้นกำหนดต้องยื่นฟอร์มอะไร เสียค่าปรับเท่าไหร่",
+    "type": "registration",
+    "gold_answer": "ยื่น NU8 ผ่านอาจารย์ที่ปรึกษาและคณบดี ชำระค่าปรับ 100 บาทต่อสัปดาห์ เพิ่มได้ไม่เกิน 5 สัปดาห์หลังหมดกำหนด ถ้ารายวิชาไม่ได้สำรองที่นั่งต้องแนบ NU6",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 80,
+    "question": "ถอนรายวิชาในช่วงสองสัปดาห์แรกเสียเงินไหม ติด W หรือเปล่า",
+    "type": "registration",
+    "gold_answer": "เสียค่าใช้จ่ายครั้งละ 10 บาท (แสดงในใบแจ้งหนี้) และไม่ปรากฏอักษร W ใน Transcript",
+    "expected_source_file": "faq_registration.md"
+  },
+  {
+    "id": 81,
+    "question": "ขอ Transcript ออนไลน์ต้องจ่ายเงินช่องทางไหน",
+    "type": "graduation",
+    "gold_answer": "ชำระค่าธรรมเนียมผ่าน K PLUS Application (ธนาคารกสิกรไทย) เท่านั้น ไฟล์เอกสารดาวน์โหลดได้ภายใน 1 ชั่วโมง ส่งไปรษณีย์ 3-5 วันทำการ",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 82,
+    "question": "สมัครสอบ CEPT ต้องจ่ายค่าสมัครเท่าไหร่",
+    "type": "graduation",
+    "gold_answer": "300 บาท ชำระได้ที่เคาน์เตอร์ธนาคารกรุงไทย (ค่าธรรมเนียมธนาคาร 10 บาท) หรือสแกนบาร์โค้ดผ่านแอปธนาคาร",
+    "expected_source_file": "faq_graduation.md"
+  },
+  {
+    "id": 83,
+    "question": "สมัครสหกิจต้องแนบเอกสารอะไรกับ Coop01 บ้าง",
+    "type": "coop_education",
+    "gold_answer": "Resume, ใบแสดงผลการเรียนทุกภาค (Transcript) และใบแสดงผลการเข้าร่วมกิจกรรม (Activity Transcript) ส่วนเกียรติบัตร รางวัล หรือผลงานแนบเพิ่มได้ ถ้าเอกสารไม่ครบคณะจะไม่จัดทำหนังสือขอความอนุเคราะห์ให้",
+    "expected_source_file": "08_coop_education.md"
+  },
+  {
+    "id": 84,
+    "question": "อยากรู้ข่าวกิจกรรมของภาควิชาเดือนนี้ติดตามได้ที่ไหน",
+    "type": "redirect_no_data",
+    "gold_answer": "ระบบไม่ได้เก็บรายละเอียดกิจกรรมไว้เพราะอัปเดตบ่อย ให้ติดตามที่เว็บไซต์ภาควิชา https://csit.nu.ac.th/ หรือเพจเฟซบุ๊ก CSIT https://www.facebook.com/share/1N5QSZJYBn/?mibextid=wwXIfr",
+    "expected_source_file": "scholarship_and_news.md"
   }
 ]

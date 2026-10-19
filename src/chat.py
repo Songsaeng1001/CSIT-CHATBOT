@@ -19,20 +19,42 @@ from src.database import vector_db
 from dataclasses import dataclass
 from src.quick_replies import topic_from_sources
 
-# ─── Sentinel: ตอบไม่ได้ ───────────────────────────
-# answer() จะคืนค่านี้เมื่อค้น context ไม่เจอ (แทนการคืนข้อความไทยตรง ๆ)
-# ผู้เรียก (CLI main / LINE webhook) เป็นคนตัดสินใจว่าจะโชว์ข้อความอะไร
-# และตั้ง answered=False เอง → ไม่ต้องเดาด้วยการเช็ก substring ในคำตอบอีก
 NO_ANSWER = "__NO_ANSWER__"
 
-# ข้อความสำรองมาตรฐานตอนตอบไม่ได้ (ใช้ฝั่ง CLI; LINE มีข้อความของตัวเอง)
+DEPT_WEBSITE = "https://csit.nu.ac.th"
+DEPT_FACEBOOK = "https://www.facebook.com/share/1N5QSZJYBn/?mibextid=wwXIfr"
+
 NO_ANSWER_MESSAGE = (
     "ขออภัยค่ะ น้องซีทียังไม่มีข้อมูลในเรื่องนี้ "
-    "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ"
+    "แนะนำให้ติดต่อภาควิชาที่ 055-963262 หรือ 055-963263 นะคะ\n"
+    f"เว็บไซต์ภาควิชา: {DEPT_WEBSITE}\n"
+    f"เพจเฟซบุ๊ก CSIT ภาควิชาวิทยาการคอมพิวเตอร์: {DEPT_FACEBOOK}"
+)
+
+DEPT_PHONES = "055-963262 หรือ 055-963263"
+
+SCHOLARSHIP_KEYWORDS = ["ทุน", "scholarship"]
+SCHOLARSHIP_EXCLUDE = ["กยศ", "กู้"]
+
+SCHOLARSHIP_MESSAGE = (
+    "ทุนการศึกษามีการเปิดรับและเปลี่ยนแปลงรายละเอียดทุกปีการศึกษาค่ะ "
+    "น้องซีทีจึงไม่ได้เก็บรายชื่อหรือรายละเอียดทุนไว้ "
+    "แนะนำให้ติดตามประกาศทุนล่าสุดจากช่องทางของภาควิชานะคะ\n\n"
+    f"เว็บไซต์ภาควิชา: {DEPT_WEBSITE}\n"
+    f"เพจเฟซบุ๊ก CSIT ภาควิชาวิทยาการคอมพิวเตอร์: {DEPT_FACEBOOK}\n\n"
+    "หากต้องการสอบถามรายละเอียดเพิ่มเติม ติดต่อเจ้าหน้าที่ภาควิชาได้ที่\n"
+    f"โทร: {DEPT_PHONES}\n"
+    "สำนักงานภาควิชา คณะวิทยาศาสตร์ อาคาร SC2"
 )
 
 
-# ─── Logging unanswered questions ──────────────────
+def is_scholarship_query(question: str) -> bool:
+    q = question.lower()
+    if any(kw in q for kw in SCHOLARSHIP_EXCLUDE):
+        return False
+    return any(kw in q for kw in SCHOLARSHIP_KEYWORDS)
+
+
 def log_unanswered_question(question: str):
     """บันทึกคำถามที่น้องซีทีตอบไม่ได้"""
     log_dir = PROJECT_ROOT / "logs"
@@ -47,7 +69,6 @@ def log_unanswered_question(question: str):
 
 
 def _add_space_th_en(text: str) -> str:
-    """แทรกเว้นวรรคระหว่างอังกฤษ/ตัวเลข กับไทย เช่น NU6คือ → NU6 คือ (ฟรี ไม่ใช้ LLM)"""
     text = re.sub(r"([A-Za-z0-9])([\u0e00-\u0e7f])", r"\1 \2", text)
     text = re.sub(r"([\u0e00-\u0e7f])([A-Za-z0-9])", r"\1 \2", text)
     return text
@@ -110,7 +131,7 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' (CSIT) ผู�
    ต้องคัดลอกมาแสดงให้ครบถ้วนทุกครั้ง ห้ามละ ห้ามย่อ ห้ามดัดแปลง URL
 
 9.1 ห้ามใช้ข้อความยึดตำแหน่งแทนลิงก์/เบอร์/อีเมลเด็ดขาด เช่น [ลิงก์...] [เบอร์โทร...]
-    ถ้าไม่มีข้อมูลจริงใน context (และไม่ใช่กรณีข้อ 11 ด้านล่างที่มีลิงก์ตายตัวให้แล้ว)
+    ถ้าไม่มีข้อมูลจริงใน context (และไม่ใช่กรณีข้อ 11–14 ด้านล่างที่มีลิงก์ตายตัวให้แล้ว)
     ให้ตัดส่วนนั้นออก หรือแนะนำให้ติดต่อภาควิชาแทน ห้ามแต่งวงเล็บขึ้นมาเด็ดขาด
 
 10. เรื่องหน่วยงาน/บริการเฉพาะ (สหกิจศึกษา ทุนการศึกษา ฝึกงาน ฯลฯ)
@@ -123,7 +144,7 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' (CSIT) ผู�
     ต้องแนบลิงก์นี้เสมอ ไม่ว่า context จะส่งลิงก์นี้มาด้วยหรือไม่ก็ตาม:
     https://csit.nu.ac.th/curriculums/
 
-    ⚠️ ห้ามแนบลิงก์นี้กับคำถามเรื่องอื่นเด็ดขาด แม้จะเกี่ยวกับ "การเรียน" ในความหมายกว้างก็ตาม
+    ห้ามแนบลิงก์นี้กับคำถามเรื่องอื่นเด็ดขาด แม้จะเกี่ยวกับ "การเรียน" ในความหมายกว้างก็ตาม
     เช่น การลงทะเบียนเรียน การขอลงทะเบียนเกิน/ต่ำกว่าหน่วยกิตที่กำหนด คำร้องต่าง ๆ
     เกรด/ผลการเรียน การขอเทียบโอนรายวิชา สถานภาพนิสิต การสำเร็จการศึกษา ฯลฯ
     คำถามกลุ่มนี้ให้ตอบตาม context ปกติ (ดูข้อ 12 ถ้าเป็นเรื่อง NU form)
@@ -131,10 +152,45 @@ SYSTEM_PROMPT = """คุณคือ 'น้องซีที' (CSIT) ผู�
 12. เมื่อตอบเรื่อง NU form / คำร้องออนไลน์ทุกครั้ง
     ต้องแนบลิงก์คู่มือการใช้งานระบบคำร้องออนไลน์ที่มีอยู่ใน context เสมอ
     ถ้า context ไม่มีลิงก์ ให้ระบุแค่ชื่อฟอร์ม (เช่น "NU3") โดยไม่ใส่วงเล็บลิงก์ปลอม
+
+13. กฎการแนบลิงก์คู่มือนิสิต (Student Manual)
+    ใช้ "เฉพาะ" คำถามเรื่องเงินและคำร้องเอกสารต่อไปนี้เท่านั้น:
+    - ค่าเล่าเรียน ค่าธรรมเนียมการศึกษา การชำระเงิน การคืนเงิน
+    - ค่าปรับการลงทะเบียนล่าช้า
+    - กองทุนเงินให้กู้ยืมเพื่อการศึกษา (กยศ.)
+    - เอกสารคำร้องของนิสิต (NU form / คำร้องต่าง ๆ)
+
+    เมื่อคำถามตรงกับหัวข้อข้างต้น ให้แนบลิงก์นี้ "เพิ่มเติม" ท้ายคำตอบเสมอ
+    (แนบเพิ่มจากลิงก์อื่นที่มีอยู่แล้ว ไม่ใช่แทนที่ — เช่น คำถาม กยศ. ให้คงลิงก์ กยศ.
+    เดิมไว้ แล้วเพิ่มลิงก์นี้ต่อท้าย):
+    https://reg7.nu.ac.th/publish/studentmanual2025_b.pdf
+
+    ห้ามแนบลิงก์นี้กับคำถามที่ไม่เกี่ยวกับเงินหรือคำร้องข้างต้นเด็ดขาด
+    เช่น หลักสูตร รายวิชา อาจารย์ สถานที่ กิจกรรม ให้ตอบตาม context ปกติ
+14. กฎการแนบลิงก์ปฏิทินการศึกษา
+    ใช้ "เฉพาะ" คำถามเรื่องกำหนดการตามปฏิทินการศึกษาเท่านั้น เช่น
+    - ช่วงเปิด-ปิดภาคการศึกษา
+    - ช่วงเวลาลงทะเบียนเรียน และช่วงเพิ่ม-ถอนรายวิชาภายในกำหนด
+    - กำหนดวันลงทะเบียนล่าช้า และวันสุดท้ายของการชำระเงิน
+    - ช่วงถอนรายวิชาแบบติดอักษร W
+    - กำหนดการสอบ (กลางภาค/ปลายภาค)
+    - กำหนดวันยื่นสำเร็จการศึกษา
+    - วันสำคัญหรือวันหยุดตามปฏิทินการศึกษา
+
+    เมื่อคำถามตรงกับหัวข้อข้างต้น ให้แนบลิงก์นี้เพิ่มเติมท้ายคำตอบเสมอ:
+    https://reg4.nu.ac.th/registrar/calendar.asp?schedulegroupid=1000&acadyear=2569&semester=2
+
+    ห้ามแนบลิงก์นี้กับคำถามเรื่อง "เวลา" ที่ไม่ใช่กำหนดการตามปฏิทินการศึกษา
+    เช่น เวลาทำการภาควิชา ระยะเวลาของหลักสูตร ระยะเวลาปฏิบัติงานสหกิจ
+    และกำหนดการ/ระยะเวลาต่าง ๆ ของ กยศ. (ให้ตอบตาม context ปกติ)
+
+15. ไม่ต้องแนบลิงก์เว็บไซต์ภาควิชาหรือเพจเฟซบุ๊กของภาควิชาเอง
+    ระบบจะต่อท้ายลิงก์ทั้งสองให้อัตโนมัติเมื่อเหมาะสม
+
+16. ห้ามอ้างชื่อไฟล์ ชื่อเอกสารต้นทาง หรือคำว่า "context" ในคำตอบเด็ดขาด
+    (เช่น "ดูได้จากไฟล์ contact_office.md") ให้นำข้อมูลมาตอบโดยตรงแทน
 """
 
-
-# ─── Prompt สำหรับเกลาคำถาม ─────────────────────────
 REWRITE_PROMPT = """คุณเป็นตัวช่วยปรับคำถามนิสิตให้เป็น "คำค้น" ที่ชัดเจน สำหรับค้นในฐานข้อมูลภาควิชา CSIT ม.นเรศวร
 
 หน้าที่: แปลงคำถามให้พร้อมค้นหา โดย:
@@ -153,13 +209,10 @@ REWRITE_PROMPT = """คุณเป็นตัวช่วยปรับคำ
 
 ตอบกลับมาเป็นคำค้นที่ปรับแล้ว "บรรทัดเดียว" เท่านั้น ห้ามมีคำอธิบายอื่น"""
 
-
-# ─── ตัวแปร global (cache) ─────────────────────────
 _llm = None
 
 
 def get_llm():
-    """โหลด LLM แค่ครั้งเดียว"""
     global _llm
     if _llm is None:
         _llm = ChatGoogleGenerativeAI(
@@ -171,7 +224,6 @@ def get_llm():
 
 
 def _history_text(history, limit=6):
-    """รวม history ล่าสุดเป็นข้อความ (3 คู่)"""
     if not history:
         return ""
     lines = []
@@ -182,7 +234,6 @@ def _history_text(history, limit=6):
 
 
 def rewrite_query(question, history=None):
-    """เกลาคำถามด้วย LLM ให้พร้อมค้น — ถ้าพลาดคืน normalize แบบ regex แทน"""
     history = history or []
 
     user_content = ""
@@ -199,50 +250,75 @@ def rewrite_query(question, history=None):
             ]
         )
         cleaned = resp.content.strip().strip('"').strip("'").strip()
-        # safety: ว่าง หรือยาวผิดปกติ (LLM หลุดไปตอบ) → ใช้ regex normalize
         if not cleaned or len(cleaned) > max(len(question) * 5, 200):
             return _add_space_th_en(question)
         return cleaned
     except Exception as e:
-        print(f"⚠️  rewrite พลาด ใช้คำถามเดิม: {e}")
+        print(f"  rewrite พลาด ใช้คำถามเดิม: {e}")
         return _add_space_th_en(question)
 
 
+def _remove_file_refs(text: str) -> str:
+    text = re.sub(r"^.*\b[\w\-]+\.md\b.*\n?", "", text, flags=re.MULTILINE)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 def _strip_markdown(text: str) -> str:
-    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # **ตัวหนา**
-    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)\*", r"\1", text)  # *เอียง*
-    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)  # # หัวข้อ
+    text = re.sub(r"^(\s*)\*\s+", r"\1• ", text, flags=re.MULTILINE)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)\*", r"\1", text)
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
     return text
+
+
+DEPT_LINK_KEYWORDS = [
+    "ติดต่อ", "เบอร์", "โทร", "อีเมล", "ที่ตั้ง", "ตึก", "อาคาร", "อยู่ที่ไหน", "อยู่ไหน",
+    "เวลาทำการ", "เปิดกี่โมง", "ปิดกี่โมง", "ข่าว", "ประกาศ", "กิจกรรม",
+    "รับสมัคร", "สมัครเรียน", "เว็บ", "เพจ", "facebook", "เฟซบุ๊ก", "เฟสบุ๊ค",
+]
+
+
+def append_dept_links(question: str, text: str) -> str:
+    q = question.lower()
+    if not any(kw in q for kw in DEPT_LINK_KEYWORDS):
+        return text
+
+    lines = []
+    if not re.search(r"https?://csit\.nu\.ac\.th/?(?:\s|$)", text):
+        lines.append(f"เว็บไซต์ภาควิชา: {DEPT_WEBSITE}")
+    if "facebook.com/share/1N5QSZJYBn" not in text:
+        lines.append(f"เพจเฟซบุ๊ก CSIT ภาควิชาวิทยาการคอมพิวเตอร์: {DEPT_FACEBOOK}")
+
+    if not lines:
+        return text
+    return text.rstrip() + "\n\n" + "\n".join(lines)
 
 
 @dataclass
 class AnswerResult:
-    """ผลลัพธ์การตอบแบบเต็ม (ฝั่ง LINE ใช้ topic เลือกชุด quick reply)"""
-    text: str            # ข้อความพร้อมส่ง (resolve sentinel แล้ว)
-    answered: bool       # True = ตอบจาก context ได้, False = ไม่มีข้อมูล
-    topic: str | None    # หัวข้อสำหรับเลือกปุ่ม (None = ใช้ default)
+    text: str            
+    answered: bool       
+    topic: str | None    
 
 
 def answer_full(question, verbose=False, history=None) -> AnswerResult:
-    """เหมือน answer() แต่คืนข้อมูลครบ (text + answered + topic)
-    ใช้ฝั่ง LINE webhook เพื่อแนบ quick reply ตามหมวดที่ตอบจริง
-    """
     history = history or []
+
+    if is_scholarship_query(question):
+        return AnswerResult(text=SCHOLARSHIP_MESSAGE, answered=True, topic=None)
+
     from src.retriever import retrieve_context
 
-    # 1) ค้นด้วยคำถาม normalize แบบ regex ก่อน (ฟรี)
     search_query = _add_space_th_en(question)
     context = retrieve_context(search_query, verbose=verbose, history=history)
 
-    # 2) ค้นไม่เจอ → ใช้ LLM เกลาคำถามแล้วค้นใหม่
     if not context.has_any():
         rewritten = rewrite_query(question, history)
         if rewritten != search_query:
             if verbose:
-                print(f"🔎 rewrite: '{search_query}' → '{rewritten}'")
+                print(f"rewrite: '{search_query}' → '{rewritten}'")
             context = retrieve_context(rewritten, verbose=verbose, history=history)
 
-    # 3) ยังไม่เจอ = ตอบไม่ได้
     if not context.has_any():
         log_unanswered_question(question)
         return AnswerResult(text=NO_ANSWER_MESSAGE, answered=False, topic=None)
@@ -261,35 +337,31 @@ def answer_full(question, verbose=False, history=None) -> AnswerResult:
             HumanMessage(content=user_message),
         ]
     )
-    text = _strip_markdown(response.content)
+    text = _remove_file_refs(_strip_markdown(response.content))
 
-    # LLM ตัดสินเองว่า context ไม่พอจะตอบ → คืนแบบเดียวกับเคสค้นไม่เจอ
-    # (อุดช่องโหว่ "เจอ context แต่ตอบว่าไม่มีข้อมูล" ที่ทำให้ answered=True + โชว์ปุ่ม)
     if not text.strip() or NO_ANSWER in text:
         log_unanswered_question(question)
         return AnswerResult(text=NO_ANSWER_MESSAGE, answered=False, topic=None)
+
+    text = append_dept_links(question, text)
 
     topic = topic_from_sources(context.sources_used)
     return AnswerResult(text=text, answered=True, topic=topic)
 
 
 def answer(question, verbose=False, history=None):
-    """(คงพฤติกรรมเดิม) คืน string คำตอบ หรือ NO_ANSWER ถ้าตอบไม่ได้
-    ผู้เรียกเดิม (CLI main / โค้ดอื่นที่เช็ก == NO_ANSWER) ใช้ได้เหมือนเดิม
-    """
     result = answer_full(question, verbose=verbose, history=history)
     return result.text if result.answered else NO_ANSWER
 
 
 def print_welcome():
-    """แสดงข้อความต้อนรับ"""
     print()
     print("=" * 60)
-    print("🤖 น้องซีที — ผู้ช่วย AI ภาควิชา CSIT")
+    print(" น้องซีที — ผู้ช่วย AI ภาควิชา CSIT")
     print("=" * 60)
-    print("💬 ทักทายและถามคำถามได้เลยค่ะ!")
+    print(" ทักทายและถามคำถามได้เลยค่ะ!")
     print()
-    print("📝 คำสั่งพิเศษ:")
+    print(" คำสั่งพิเศษ:")
     print("   /verbose  - เปิด/ปิดแสดงรายละเอียดการค้นหา")
     print("   /clear    - เคลียร์หน้าจอ")
     print("   /help     - แสดงคำสั่งทั้งหมด")
@@ -298,8 +370,7 @@ def print_welcome():
 
 
 def print_help():
-    """แสดงคำสั่ง"""
-    print("\n📖 คำสั่งที่ใช้ได้:")
+    print("\n คำสั่งที่ใช้ได้:")
     print("   /verbose  - เปิด/ปิดแสดงรายละเอียดการค้นหา")
     print("   /clear    - เคลียร์หน้าจอ")
     print("   /help     - แสดงคำสั่งนี้")
@@ -308,19 +379,18 @@ def print_help():
 
 
 def main():
-    """Loop หลัก"""
     if not GOOGLE_API_KEY:
-        print("❌ ไม่พบ GOOGLE_API_KEY ใน .env")
+        print(" ไม่พบ GOOGLE_API_KEY ใน .env")
         return
 
     count = vector_db.count_documents()
     if count == 0:
-        print("❌ Chroma DB ว่างเปล่า")
+        print(" Chroma DB ว่างเปล่า")
         print("   กรุณารัน: python -m src.ingest")
         return
 
     print_welcome()
-    print(f"\n💾 โหลด knowledge base: {count} chunks พร้อม")
+    print(f"\n โหลด knowledge base: {count} chunks พร้อม")
 
     verbose = False
     from collections import deque
@@ -329,17 +399,17 @@ def main():
     while True:
         try:
             print()
-            user_input = input("👤 คุณ: ").strip()
+            user_input = input(" คุณ: ").strip()
             if not user_input:
                 continue
 
             cmd = user_input.lower()
             if cmd in ("quit", "exit", "q", "/quit", "/exit"):
-                print("\n👋 ลาก่อนค่ะ! ขอให้เป็นวันที่ดีนะคะ 💙")
+                print("\n ลาก่อนค่ะ! ขอให้เป็นวันที่ดีนะคะ ")
                 break
             if cmd == "/verbose":
                 verbose = not verbose
-                print(f"🔧 Verbose mode: {'เปิด' if verbose else 'ปิด'}")
+                print(f" Verbose mode: {'เปิด' if verbose else 'ปิด'}")
                 continue
             if cmd == "/clear":
                 import os
@@ -351,25 +421,24 @@ def main():
                 print_help()
                 continue
 
-            print("\n💭 กำลังคิด...", end="", flush=True)
+            print("\n กำลังคิด...", end="", flush=True)
             try:
                 response = answer(user_input, verbose=verbose, history=list(_history))
-                # แปลง sentinel เป็นข้อความที่อ่านได้ (อย่าโชว์ "__NO_ANSWER__")
                 if response == NO_ANSWER:
                     response = NO_ANSWER_MESSAGE
                 print("\r" + " " * 20 + "\r", end="")
-                print(f"💬 น้องซีที: {response}")
+                print(f" น้องซีที: {response}")
                 _history.append({"role": "user", "content": user_input})
                 _history.append({"role": "assistant", "content": response[:200]})
             except Exception as e:
-                print(f"\r❌ เกิดข้อผิดพลาด: {e}")
+                print(f"\r เกิดข้อผิดพลาด: {e}")
                 print("   ลองถามใหม่อีกครั้งนะคะ")
 
         except KeyboardInterrupt:
-            print("\n\n👋 ลาก่อนค่ะ! 💙")
+            print("\n\n ลาก่อนค่ะ! ")
             break
         except EOFError:
-            print("\n👋 ลาก่อนค่ะ! 💙")
+            print("\n ลาก่อนค่ะ! ")
             break
 
 

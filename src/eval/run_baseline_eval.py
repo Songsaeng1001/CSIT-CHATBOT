@@ -33,17 +33,6 @@ run_baseline_eval.py — รันชุดคำถามทดสอบ (eval_
 """
 
 import os
-
-# ⚠️ ต้องตั้งก่อน import src.* ทุกตัว — src/retriever.py อ่าน CSIT_ENABLE_KG
-#    ตอน import (ระดับ module) ถ้าตั้งทีหลังจะไม่มีผลเลย
-#
-# ใช้ setdefault ไม่ใช่กำหนดตรง ๆ เพื่อให้ run_kg_eval.py ที่ตั้งเป็น "1" ไว้ก่อน
-# แล้วค่อย import ไฟล์นี้ ไม่ถูกเขียนทับ
-#
-# (แก้ 2026-07-23: เดิมไฟล์นี้ไม่ตั้ง env var เลย → retriever ใช้ค่า default ของ
-#  ตัวเอง = "1" ผลที่ได้จึงเป็น RAG+KG ไม่ใช่ RAG-only ตามชื่อ "baseline"
-#  ถ้าเอาไปเทียบกับ kg_results.json จะกลายเป็นเทียบ KG กับ KG ได้ผลต่างเป็นศูนย์
-#  โดยไม่มีอะไรเตือน)
 os.environ.setdefault("CSIT_ENABLE_KG", "0")
 
 import re
@@ -78,19 +67,14 @@ def is_quota_error(e: Exception) -> bool:
 
 
 def is_daily_quota_error(e: Exception) -> bool:
-    """โควตา 'ต่อวัน' (RPD) — หมดแล้วจริง รอสั้น ๆ ไม่มีประโยชน์ ต้องหยุดทั้งสคริปต์"""
     return any(marker in str(e) for marker in RPD_MARKERS)
 
 
 def is_per_minute_quota_error(e: Exception) -> bool:
-    """โควตา 'ต่อนาที' (RPM) — ชั่วคราว รอสั้น ๆ (ตาม retryDelay ถ้ามี) แล้ว retry เองได้"""
     return any(marker in str(e) for marker in RPM_MARKERS)
 
 
 def extract_retry_delay_seconds(e: Exception, default: float = DEFAULT_RPM_WAIT) -> float:
-    """ดึงจำนวนวินาทีที่ต้องรอจาก error message (Google มักส่ง 'retryDelay': '29s'
-    หรือ 'retry in 29.7s' มาให้) ถ้าดึงไม่ได้ใช้ default แทน
-    """
     text = str(e)
     match = re.search(r"retryDelay['\"]?\s*:\s*['\"](\d+(?:\.\d+)?)s", text)
     if match:
@@ -102,16 +86,6 @@ def extract_retry_delay_seconds(e: Exception, default: float = DEFAULT_RPM_WAIT)
 
 
 def _call_with_rpm_retry(fn, *args, max_retries: int = MAX_RPM_RETRIES, **kwargs):
-    """เรียกฟังก์ชันที่ยิง Gemini API ข้างใน พร้อม retry อัตโนมัติเฉพาะตอนชนโควตา
-    'ต่อนาที' (RPM) เพราะเป็นข้อจำกัดชั่วคราว รอสั้น ๆ แล้วลองใหม่ได้จริง
-
-    ถ้าชนโควตา 'ต่อวัน' (RPD) จะปล่อย exception หลุดออกไปทันที (retry ไม่มีประโยชน์)
-    ให้ผู้เรียก (run()) หยุดทั้งสคริปต์ตามเดิม
-
-    ถ้าชน quota error ที่จับรูปแบบ RPM/RPD ไม่ได้เลย (ข้อความอาจเปลี่ยนไปจาก Google ในอนาคต)
-    จะ print debug ข้อมูล exception เต็ม ๆ ก่อนปล่อยให้หลุดออกไปเหมือน RPD (ระมัดระวังไว้ก่อน
-    ดีกว่าเดามั่ว ๆ ว่า retry ได้)
-    """
     for attempt in range(1, max_retries + 1):
         try:
             return fn(*args, **kwargs)
@@ -120,11 +94,11 @@ def _call_with_rpm_retry(fn, *args, max_retries: int = MAX_RPM_RETRIES, **kwargs
                 raise
             if is_per_minute_quota_error(e) and attempt < max_retries:
                 delay = extract_retry_delay_seconds(e) + 2  # กันเหนียวเผื่อ clock ไม่ตรงเป๊ะ
-                print(f"   ⏳ ชนโควตาต่อนาที (RPM) รอ {delay:.0f} วินาที แล้วลองใหม่ (ครั้งที่ {attempt}/{max_retries})")
+                print(f"    ชนโควตาต่อนาที (RPM) รอ {delay:.0f} วินาที แล้วลองใหม่ (ครั้งที่ {attempt}/{max_retries})")
                 time.sleep(delay)
                 continue
             if is_quota_error(e) and not is_per_minute_quota_error(e) and not is_daily_quota_error(e):
-                print("   🐛 debug: เจอ quota error ที่ไม่ตรงทั้ง RPM/RPD pattern")
+                print("    debug: เจอ quota error ที่ไม่ตรงทั้ง RPM/RPD pattern")
                 print(f"      ชนิด exception: {type(e).__name__}")
                 print(f"      ข้อความเต็ม: {e}")
             raise
@@ -143,7 +117,7 @@ def load_existing_results() -> list[dict]:
         with open(RESULTS_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        print("   ⚠️  อ่านผลเดิมไม่สำเร็จ (ไฟล์อาจเสีย) จะเริ่มนับใหม่จากศูนย์")
+        print(" อ่านผลเดิมไม่สำเร็จ (ไฟล์อาจเสีย) จะเริ่มนับใหม่จากศูนย์")
         return []
 
 
@@ -153,15 +127,10 @@ def save_results(all_results: list[dict]) -> None:
 
 
 def retrieval_eval_for_question(question: str, expected_source: str | None, k: int = 5):
-    """ดึง chunk จาก Chroma โดยตรง (bypass retrieve_context เพราะต้องการ metadata['source']
-    ซึ่ง fetch_from_chroma ใน retriever.py ทิ้งไปตอนสร้าง context — ดึงใหม่ตรง ๆ ที่นี่แทน)
-    """
     if not expected_source:
         return None
     results = vector_db.search(normalize_query(question), k=k)
     retrieved_ids = [doc.metadata.get("source", "") for doc, score in results]
-    # metadata['source'] มักเป็น path เต็ม (เช่น knowledge_base/curriculum_cs.md)
-    # ตัดให้เหลือแค่ชื่อไฟล์ กันเทียบไม่ตรงเพราะ path ต่างกัน
     retrieved_names = [Path(r).name if r else r for r in retrieved_ids]
     relevant_ids = {expected_source}
     return {
@@ -185,7 +154,7 @@ def run(limit: int | None = None, n_questions: int = 3):
             "หยุดไว้ก่อนเพื่อกันข้อมูล 2 ระบบปนกัน"
         )
     mode = "RAG+KG" if ENABLE_KG else "RAG-only (ปิด KG)"
-    print(f"⚙️  โหมด: {mode}  |  ENABLE_KG={ENABLE_KG}  |  บันทึกที่ {RESULTS_PATH.name}\n")
+    print(f"โหมด: {mode}  |  ENABLE_KG={ENABLE_KG}  |  บันทึกที่ {RESULTS_PATH.name}\n")
 
     dataset = load_dataset()
     all_results = load_existing_results()
@@ -195,12 +164,12 @@ def run(limit: int | None = None, n_questions: int = 3):
         item for i, item in enumerate(dataset, start=1) if item.get("id", i) not in done_ids
     ]
     if not remaining:
-        print(f"✅ ทำครบทุกคำถามแล้ว ({len(all_results)}/{len(dataset)}) — ดูผลได้ที่ {RESULTS_PATH}")
+        print(f"ทำครบทุกคำถามแล้ว ({len(all_results)}/{len(dataset)}) — ดูผลได้ที่ {RESULTS_PATH}")
         return
     if limit:
         remaining = remaining[:limit]
 
-    print(f"📂 ทำไปแล้ว {len(done_ids)}/{len(dataset)} คำถาม จะรันเพิ่ม {len(remaining)} คำถามในรอบนี้\n")
+    print(f"ทำไปแล้ว {len(done_ids)}/{len(dataset)} คำถาม จะรันเพิ่ม {len(remaining)} คำถามในรอบนี้\n")
 
     for i, item in enumerate(remaining, start=1):
         idx_in_dataset = dataset.index(item) + 1
@@ -208,23 +177,21 @@ def run(limit: int | None = None, n_questions: int = 3):
         question = item["question"]
         print(f"[{i}/{len(remaining)}] (id={qid}) {question}")
 
-        # 1) ตอบจริงผ่านระบบปัจจุบัน (เหมือนที่ผู้ใช้ LINE ได้รับเป๊ะ ๆ) — retry RPM อัตโนมัติ
         try:
             result = _call_with_rpm_retry(answer_full, question, verbose=False, history=[])
         except Exception as e:
             if is_quota_error(e):
-                print(f"   ⛔ โควตา API หมดสำหรับวันนี้ หยุดรันไว้ก่อน (บันทึกผลที่ทำไปแล้ว {len(all_results)} คำถามสะสม)")
-                print("      พรุ่งนี้รันคำสั่งเดิมซ้ำได้เลย ระบบจะทำต่อจากคำถามที่ยังไม่เสร็จให้อัตโนมัติ")
+                print(f"โควตา API หมดสำหรับวันนี้ หยุดรันไว้ก่อน (บันทึกผลที่ทำไปแล้ว {len(all_results)} คำถามสะสม)")
+                print("พรุ่งนี้รันคำสั่งเดิมซ้ำได้เลย ระบบจะทำต่อจากคำถามที่ยังไม่เสร็จให้อัตโนมัติ")
                 break
-            print(f"   ❌ ตอบคำถามไม่สำเร็จ (ข้ามคำถามนี้ ครั้งหน้าจะลองใหม่): {e}")
+            print(f"ตอบคำถามไม่สำเร็จ (ข้ามคำถามนี้ ครั้งหน้าจะลองใหม่): {e}")
             continue
 
-        # 2) ดึง context ที่ระบบใช้จริงตอนตอบ (สำหรับคำนวณ RAGAS)
         try:
             ctx = retrieve_context(question)
             context_text = ctx.to_prompt_text()
         except Exception as e:
-            print(f"   ⚠️  ดึง context ไม่สำเร็จ: {e}")
+            print(f" ดึง context ไม่สำเร็จ: {e}")
             context_text = ""
 
         entry = {
@@ -236,7 +203,6 @@ def run(limit: int | None = None, n_questions: int = 3):
             "answered": result.answered,
         }
 
-        # 3) RAGAS — ข้ามถ้าไม่มี context เลย (เคส redirect ปฏิทิน/กยศ./greeting) — retry RPM อัตโนมัติ
         if context_text.strip():
             try:
                 entry["ragas"] = _call_with_rpm_retry(
@@ -244,26 +210,23 @@ def run(limit: int | None = None, n_questions: int = 3):
                 )
             except Exception as e:
                 if is_quota_error(e):
-                    print(f"   ⛔ โควตา API หมดระหว่างคำนวณ RAGAS หยุดรันไว้ก่อน (บันทึกผลที่ทำไปแล้ว {len(all_results)} คำถามสะสม)")
-                    print("      พรุ่งนี้รันคำสั่งเดิมซ้ำได้เลย ระบบจะทำต่อจากคำถามที่ยังไม่เสร็จให้อัตโนมัติ")
+                    print(f"โควตา API หมดระหว่างคำนวณ RAGAS หยุดรันไว้ก่อน (บันทึกผลที่ทำไปแล้ว {len(all_results)} คำถามสะสม)")
+                    print("พรุ่งนี้รันคำสั่งเดิมซ้ำได้เลย ระบบจะทำต่อจากคำถามที่ยังไม่เสร็จให้อัตโนมัติ")
                     break
-                print(f"   ⚠️  RAGAS พลาด: {e}")
+                print(f"RAGAS พลาด: {e}")
                 entry["ragas"] = None
         else:
             entry["ragas"] = None
 
-        # 4) retrieval metrics เฉพาะที่ระบุ expected_source_file ไว้
         entry["retrieval"] = retrieval_eval_for_question(
             question, item.get("expected_source_file")
         )
 
         all_results.append(entry)
-        # บันทึกทันทีทุกครั้งที่ทำเสร็จ 1 คำถาม — กันโควตาหมดกลางทางแล้วผลหาย
         save_results(all_results)
 
-    print(f"\n✅ บันทึกผลแล้วที่ {RESULTS_PATH} ({len(all_results)}/{len(dataset)} คำถามสะสม)")
+    print(f"\n บันทึกผลแล้วที่ {RESULTS_PATH} ({len(all_results)}/{len(dataset)} คำถามสะสม)")
 
-    # สรุปคะแนนเฉลี่ยคร่าว ๆ ให้ดูตอนจบเลย (ไม่ต้องรอ compare_stats.py)
     faith = [r["ragas"]["faithfulness"]["score"] for r in all_results if r["ragas"] and r["ragas"]["faithfulness"]["score"] is not None]
     rel = [r["ragas"]["answer_relevance"]["score"] for r in all_results if r["ragas"] and r["ragas"]["answer_relevance"]["score"] is not None]
     ctx_rel = [r["ragas"]["context_relevance"]["score"] for r in all_results if r["ragas"] and r["ragas"]["context_relevance"]["score"] is not None]
@@ -275,7 +238,7 @@ def run(limit: int | None = None, n_questions: int = 3):
         print(f"   Context Relevance เฉลี่ย: {sum(ctx_rel)/len(ctx_rel):.3f}  (n={len(ctx_rel)})")
 
     if len(all_results) < len(dataset):
-        print(f"\n   ℹ️  ยังเหลืออีก {len(dataset) - len(all_results)} คำถาม รันคำสั่งเดิมซ้ำวันพรุ่งนี้เพื่อทำต่อ")
+        print(f"\n     ยังเหลืออีก {len(dataset) - len(all_results)} คำถาม รันคำสั่งเดิมซ้ำวันพรุ่งนี้เพื่อทำต่อ")
 
 
 if __name__ == "__main__":

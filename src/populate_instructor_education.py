@@ -1,10 +1,4 @@
 """
-สคริปต์กรอกข้อมูล "วุฒิการศึกษา" ให้อาจารย์ทั้ง 20 ท่านในตาราง instructors
-(ดึงจากเอกสาร knowledge_base/instructors_staff.md ที่ผู้ใช้แนบมา)
-
-ใช้ staff_id เป็นตัวจับคู่ (ไม่ใช้ name LIKE) เพื่อความแม่นยำ 100%
-รันครั้งเดียวหลังจากรัน migration เพิ่มคอลัมน์ education แล้ว (python -m src.database.sqlite_db)
-
 รัน:
     python -m populate_instructor_education
 หรือย้ายไฟล์นี้เข้า repo แล้ว:
@@ -12,8 +6,6 @@
 """
 
 from src.database.sqlite_db import db_session
-
-# staff_id -> วุฒิการศึกษา (เรียงจากที่ระบุในเอกสารต้นฉบับ คั่นด้วย " | ")
 EDUCATION_DATA = {
     "F05003": (
         "สำเร็จการศึกษาจาก University of Liverpool ประเทศ UK สาขาวิชา Computer Science | "
@@ -124,9 +116,9 @@ def run():
             else:
                 missing.append(staff_id)
 
-    print(f"✅ อัปเดตวุฒิการศึกษาแล้ว {updated}/{len(EDUCATION_DATA)} ท่าน")
+    print(f" อัปเดตวุฒิการศึกษาแล้ว {updated}/{len(EDUCATION_DATA)} ท่าน")
     if missing:
-        print(f"⚠️  ไม่พบ staff_id เหล่านี้ในตาราง instructors (เช็คว่า sqlite ยังไม่ได้ seed หรือ staff_id เปลี่ยน):")
+        print(f"  ไม่พบ staff_id เหล่านี้ในตาราง instructors (เช็คว่า sqlite ยังไม่ได้ seed หรือ staff_id เปลี่ยน):")
         for s in missing:
             print(f"   - {s}")
 

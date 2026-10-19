@@ -6,9 +6,9 @@ import sys
 import platform
 
 print("=" * 60)
-print(f"🐍 Python: {sys.version}")
-print(f"🍎 Platform: {platform.platform()}")
-print(f"💻 Machine: {platform.machine()}")
+print(f"Python: {sys.version}")
+print(f"Platform: {platform.platform()}")
+print(f" Machine: {platform.machine()}")
 print("=" * 60)
 
 packages = [
@@ -43,11 +43,11 @@ for pkg, desc in packages:
         fail += 1
 
 print("=" * 60)
-print(f"📊 สำเร็จ {success}/{len(packages)}  |  ผิดพลาด {fail}")
+print(f" สำเร็จ {success}/{len(packages)}  |  ผิดพลาด {fail}")
 print("=" * 60)
 
 if fail > 0:
-    print("\n💡 ติดตั้งเพิ่ม: pip install -r requirements.txt")
+    print("\n ติดตั้งเพิ่ม: pip install -r requirements.txt")
     sys.exit(1)
 else:
-    print("\n🎉 พร้อมเริ่มเขียนโค้ดแล้ว!")
+    print("\n พร้อมเริ่มเขียนโค้ดแล้ว!")

@@ -1,17 +1,6 @@
 """
-Seed ข้อมูลวุฒิการศึกษาแบบ structured เข้าตาราง instructor_education
-
-ที่มาของข้อมูล: knowledge_base/staff_csit.md (คัดลอกมาตรงตัว ไม่ได้เดาเพิ่ม)
-รันครั้งเดียวหลังอัปเดต sqlite_db.py:
-
+    Seed ข้อมูลวุฒิการศึกษาแบบ structured เข้าตาราง instructor_education
     python -m src.database.seed_education
-
-รันซ้ำได้ปลอดภัย (idempotent) — set_instructor_education() ลบแถวเดิมของ
-อาจารย์คนนั้นทิ้งก่อนใส่ชุดใหม่ทุกครั้ง
-
-⚠️ ข้อมูลนี้แก้ปัญหาที่พบใน Session 8: KG ตอบ "อาจารย์จบเอกต่างประเทศ" ได้แค่
-   7 คนจาก 9 คน เพราะ ผศ.ดร.วินัย และ ดร.เอกสิทธิ์ ไม่เคยถูก sync เข้า SQLite
-   (Session 6 sync ไปแค่ 8 คน ไม่ใช่ 15 คนที่มีวุฒิ ดร.)
 """
 
 from src.database.sqlite_db import (
@@ -23,11 +12,7 @@ from src.database.sqlite_db import (
 )
 
 TH = "ไทย"
-
-# key = รหัสบุคลากร (staff_id) — UNIQUE จึงแม่นกว่าชื่อ
-# value = (ชื่อสำหรับ fallback ถ้าหา staff_id ไม่เจอ, [ใบปริญญาเรียงจากสูงไปต่ำ])
 EDUCATION_DATA: dict[str, tuple[str, list[dict]]] = {
-    # ── จบปริญญาเอกต่างประเทศ (9 ท่าน) ──────────────────────────────
     "F05003": ("จักรกฤษณ์", [
         {"level": "doctorate", "degree": "Ph.D.", "field": "Computer Science",
          "institution": "University of Liverpool", "country": "UK"},
@@ -75,7 +60,6 @@ EDUCATION_DATA: dict[str, tuple[str, list[dict]]] = {
         {"level": "master", "degree": "M.Sc.",
          "field": "System Design for Internet Applications",
          "institution": "University of Newcastle Upon Tyne", "country": "UK"},
-        # ⚠️ AIT อยู่ในไทย แม้ชื่อเป็นภาษาอังกฤษล้วน
         {"level": "master", "degree": "M.Sc.", "field": "Computer Science",
          "institution": "Asian Institute of Technology", "country": TH},
         {"level": "bachelor", "degree": "วท.บ.", "field": "วิทยาการคอมพิวเตอร์",
@@ -109,10 +93,6 @@ EDUCATION_DATA: dict[str, tuple[str, list[dict]]] = {
         {"level": "bachelor", "degree": "วศ.บ.", "field": "วิศวกรรมคอมพิวเตอร์",
          "institution": "มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี", "country": TH},
     ]),
-
-    # ── จบปริญญาเอกในประเทศไทย (6 ท่าน) ──────────────────────────────
-    # ⚠️ กลุ่มนี้คือกับดัก false positive: 2 ท่านล่างเขียนวุฒิว่า "Ph.D."
-    #    แต่จบในไทย ถ้าใช้ heuristic ที่ดูแค่คำว่า Ph.D. จะถูกนับผิดทันที
     "F05014": ("เกรียงศักดิ์", [
         {"level": "doctorate", "degree": "วศ.ด.", "field": "วิศวกรรมไฟฟ้า",
          "institution": "สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง", "country": TH},
@@ -157,8 +137,6 @@ EDUCATION_DATA: dict[str, tuple[str, list[dict]]] = {
         {"level": "bachelor", "degree": "B.Sc.", "field": "คณิตศาสตร์",
          "institution": "มหาวิทยาลัยเชียงใหม่", "country": TH},
     ]),
-
-    # ── ยังไม่มีวุฒิปริญญาเอก (5 ท่าน) ────────────────────────────────
     "F05013": ("เทวิน", [
         {"level": "bachelor", "degree": "วศ.บ.", "field": "วิศวกรรมไฟฟ้า",
          "institution": "สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง", "country": TH},
@@ -192,14 +170,11 @@ EDUCATION_DATA: dict[str, tuple[str, list[dict]]] = {
          "institution": "มหาวิทยาลัยศรีนครินทรวิโรฒ", "country": TH},
     ]),
 }
-
-# จำนวนที่คาดหวัง — นับด้วยมือจาก staff_csit.md ใช้เป็น assertion กันข้อมูลเพี้ยน
 EXPECTED_FOREIGN_PHD = 9
 EXPECTED_THAI_PHD = 6
 
 
 def seed(verbose: bool = True) -> tuple[int, list[str]]:
-    """เขียนข้อมูลลง instructor_education — คืน (จำนวนที่สำเร็จ, รายชื่อที่หาไม่เจอ)"""
     init_database()
     ok = 0
     not_found = []
@@ -207,31 +182,31 @@ def seed(verbose: bool = True) -> tuple[int, list[str]]:
         if set_instructor_education(staff_id, degrees):
             ok += 1
             if verbose:
-                print(f"   ✅ {name} ({staff_id}) — {len(degrees)} ใบ")
+                print(f"{name} ({staff_id}) — {len(degrees)} ใบ")
         elif set_instructor_education(name, degrees):
             ok += 1
             if verbose:
-                print(f"   ✅ {name} (จับด้วยชื่อ — ไม่พบ staff_id {staff_id})")
+                print(f"{name} (จับด้วยชื่อ — ไม่พบ staff_id {staff_id})")
         else:
             not_found.append(f"{name} ({staff_id})")
             if verbose:
-                print(f"   ❌ ไม่พบอาจารย์: {name} ({staff_id})")
+                print(f"ไม่พบอาจารย์: {name} ({staff_id})")
     return ok, not_found
 
 
 def main():
-    print("🌱 กำลัง seed ข้อมูลวุฒิการศึกษาแบบ structured...\n")
+    print("กำลัง seed ข้อมูลวุฒิการศึกษาแบบ structured...\n")
     ok, not_found = seed()
 
-    print(f"\n📊 บันทึกสำเร็จ {ok}/{len(EDUCATION_DATA)} ท่าน")
+    print(f"\n บันทึกสำเร็จ {ok}/{len(EDUCATION_DATA)} ท่าน")
     if not_found:
-        print("⚠️  หาไม่เจอในตาราง instructors (ต้องรัน ingest ก่อน):")
+        print("หาไม่เจอในตาราง instructors (ต้องรัน ingest ก่อน):")
         for n in not_found:
             print(f"      - {n}")
 
     cov = education_coverage()
     print(
-        f"\n📈 ความครบของข้อมูล: {cov['with_education_rows']}/"
+        f"\n ความครบของข้อมูล: {cov['with_education_rows']}/"
         f"{cov['total_instructors']} ท่านมีข้อมูลวุฒิแล้ว"
     )
     if cov["missing_education"]:
@@ -242,19 +217,19 @@ def main():
     foreign = find_foreign_phd_instructors()
     thai = find_thai_phd_instructors()
 
-    print(f"\n🌍 จบเอกต่างประเทศ: {len(foreign)} ท่าน")
+    print(f"\n จบเอกต่างประเทศ: {len(foreign)} ท่าน")
     for inst in foreign:
         print(f"      - {inst.get('title_short') or ''} {inst['name']}")
-    print(f"\n🇹🇭 จบเอกในไทย: {len(thai)} ท่าน")
+    print(f"\n จบเอกในไทย: {len(thai)} ท่าน")
     for inst in thai:
         print(f"      - {inst.get('title_short') or ''} {inst['name']}")
 
     print()
     if len(foreign) == EXPECTED_FOREIGN_PHD and len(thai) == EXPECTED_THAI_PHD:
-        print(f"✅ ตรงกับที่คาดหวัง (ต่างประเทศ {EXPECTED_FOREIGN_PHD}, "
+        print(f"ตรงกับที่คาดหวัง (ต่างประเทศ {EXPECTED_FOREIGN_PHD}, "
               f"ไทย {EXPECTED_THAI_PHD})")
     else:
-        print(f"⚠️  ไม่ตรงกับที่คาดหวัง — ควรได้ต่างประเทศ {EXPECTED_FOREIGN_PHD} "
+        print(f"ไม่ตรงกับที่คาดหวัง — ควรได้ต่างประเทศ {EXPECTED_FOREIGN_PHD} "
               f"และไทย {EXPECTED_THAI_PHD} ท่าน")
         print("   สาเหตุที่พบบ่อย: ตาราง instructors ยังไม่มีอาจารย์ครบ 20 ท่าน")
 

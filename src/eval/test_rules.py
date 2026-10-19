@@ -69,43 +69,23 @@ def check(label: str, got, want) -> None:
         _failed.append(label)
         print(f"  ❌ {label}\n       ได้: {got!r}\n       ควรได้: {want!r}")
 
-
-# ═══════════════════════════════════════════════════════════
-# 1. เกียรตินิยม — เส้นแบ่งที่ 3.25 และ 3.50
-# ═══════════════════════════════════════════════════════════
-
-
 def test_honor():
     r = load_rules()["graduation"]["honors"]
     first = r["first_class"]["name"]
     second = r["second_class"]["name"]
     print("\n── 1. เกียรตินิยม (เส้นแบ่ง 3.25 / 3.50) ──")
-
-    # เส้นแบ่งล่าง 3.25
     check("GPA 3.24 → ไม่ได้เกียรตินิยม", calculate_honor(3.24), None)
     check("GPA 3.25 → อันดับสอง (บนเส้นพอดี)", calculate_honor(3.25), second)
     check("GPA 3.26 → อันดับสอง", calculate_honor(3.26), second)
-
-    # เส้นแบ่งบน 3.50
     check("GPA 3.49 → อันดับสอง", calculate_honor(3.49), second)
     check("GPA 3.50 → อันดับหนึ่ง (บนเส้นพอดี)", calculate_honor(3.50), first)
     check("GPA 3.51 → อันดับหนึ่ง", calculate_honor(3.51), first)
-
-    # ตัวแทนแต่ละช่วง
     check("GPA 2.00 → ไม่ได้เกียรตินิยม", calculate_honor(2.00), None)
     check("GPA 4.00 → อันดับหนึ่ง", calculate_honor(4.00), first)
-
-    # ช่องโหว่ระหว่าง 3.49 กับ 3.50 ปิดแล้ว (แก้ 2026-07-23)
     check("GPA 3.495 → อันดับสอง (เดิมตกร่องคืน None)", calculate_honor(3.495), second)
     check("GPA 3.499 → อันดับสอง", calculate_honor(3.499), second)
-    # ค่านอกช่วงที่เป็นไปได้ → None ไม่ raise (กันบอทล่มจากที่ผู้ใช้พิมพ์เอง)
     check("GPA 5.00 (นอกช่วง) → None", calculate_honor(5.00), None)
     check("GPA -1.00 (นอกช่วง) → None", calculate_honor(-1.00), None)
-
-
-# ═══════════════════════════════════════════════════════════
-# 2. ค่าปรับลงทะเบียนล่าช้า — เส้นแบ่งที่ 14 วัน
-# ═══════════════════════════════════════════════════════════
 
 
 def test_late_fee():
@@ -144,19 +124,12 @@ def test_late_fee():
         5 * per_day,
     )
 
-    # ⚠️ ไม่มีการตรวจ input — บันทึกพฤติกรรมปัจจุบันไว้ให้เห็นชัด
     check(
         "ช้า 0 วัน → ค่าปรับ 0 (ควรเป็นเคส 'ไม่ล่าช้า' ต่างหาก)",
         calculate_late_fee(0)["total_fee"],
         0,
     )
     check_raises("ช้า -3 วัน → raise ValueError", calculate_late_fee, -3)
-
-
-# ═══════════════════════════════════════════════════════════
-# 3. หน่วยกิต — เส้นแบ่ง 22 (ภาคปกติ) / 9 (ฤดูร้อน)
-# ═══════════════════════════════════════════════════════════
-
 
 def test_credit_limit():
     r = load_rules()["registration"]["credit_limits"]["undergraduate"]
@@ -194,11 +167,6 @@ def test_credit_limit():
     check_raises("ลง -5 หน่วยกิต → raise ValueError", check_credit_limit, -5)
 
 
-# ═══════════════════════════════════════════════════════════
-# 4. สถานภาพนิสิต — เส้นแบ่ง 1.50 (2 ภาค) / 1.75 (4 ภาค) / 2.00 (รอพินิจ)
-# ═══════════════════════════════════════════════════════════
-
-
 def test_academic_status():
     r = load_rules()["academic_status"]["dismissal_by_gpa"]
     t2 = r["after_2_semesters"]["threshold"]
@@ -207,44 +175,27 @@ def test_academic_status():
 
     st = lambda g, s: check_academic_status(g, s)["status"]
 
-    # เส้น 2 ภาค
     check(f"GPA {t2-0.01}, 2 ภาค → พ้นสภาพ", st(t2 - 0.01, 2), "พ้นสภาพ")
     check(f"GPA {t2}, 2 ภาค → ไม่พ้นสภาพ (บนเส้นพอดี)", st(t2, 2), "รอพินิจ")
 
-    # เส้น 4 ภาค
     check(f"GPA {t4-0.01}, 4 ภาค → พ้นสภาพ", st(t4 - 0.01, 4), "พ้นสภาพ")
     check(f"GPA {t4}, 4 ภาค → ไม่พ้นสภาพ (บนเส้นพอดี)", st(t4, 4), "รอพินิจ")
     check(f"GPA {t4-0.01}, 6 ภาค → พ้นสภาพ", st(t4 - 0.01, 6), "พ้นสภาพ")
 
-    # เส้นรอพินิจ 2.00
     check("GPA 1.99, 1 ภาค → รอพินิจ", st(1.99, 1), "รอพินิจ")
     check("GPA 2.00, 1 ภาค → ปกติ (บนเส้นพอดี)", st(2.00, 1), "ปกติ")
     check("GPA 3.50, 8 ภาค → ปกติ", st(3.50, 8), "ปกติ")
 
-    # ⚠️ ประเด็นเชิงระเบียบที่ต้องยืนยันกับข้อบังคับจริง
-    #    โค้ดใช้ semesters >= 2 ไม่ใช่ == 2 แปลว่านิสิตที่เรียนครบ 3 ภาค
-    #    GPA 1.40 จะถูกตัดสินว่าพ้นสภาพทันที ทั้งที่ระเบียบมหาวิทยาลัยมัก
-    #    ตรวจสถานภาพ "ปลายปีการศึกษา" (ภาคที่ 2, 4, 6) ไม่ใช่ทุกภาค
-    #    เคสนี้บันทึกพฤติกรรมปัจจุบันไว้ ถ้าตรวจข้อบังคับแล้วต้องแก้ เคสนี้จะฟ้อง
     check(
         f"GPA {t2-0.1}, 3 ภาค → พ้นสภาพ (ต้องยืนยันกับข้อบังคับ)",
         st(t2 - 0.1, 3),
         "พ้นสภาพ",
     )
 
-
-# ═══════════════════════════════════════════════════════════
-# 5. Redirect: กยศ. และปฏิทินการศึกษา
-# ═══════════════════════════════════════════════════════════
-
-
 def test_redirects():
     print("\n── 5. Redirect (กยศ. / ปฏิทินการศึกษา) ──")
-
-    # positive — ต้องจับได้
     check("'อยากกู้ยืม กยศ' → loan", is_loan_query("อยากกู้ยืม กยศ"), True)
     check("'ดอกเบี้ยเท่าไร' → loan", is_loan_query("ดอกเบี้ยเท่าไร"), True)
-    # negative — ต้องไม่จับ (กันเหวี่ยงแห)
     check(
         "'ลงทะเบียนช้า 5 วัน' → ไม่ใช่ loan", is_loan_query("ลงทะเบียนช้า 5 วัน"), False
     )
@@ -254,21 +205,18 @@ def test_redirects():
         False,
     )
 
-    # ปฏิทิน: direct keyword → จับทันที
     check("'เปิดเทอมวันไหน' → calendar", is_calendar_query("เปิดเทอมวันไหน"), True)
     check(
         "'ปฏิทินการศึกษาดูที่ไหน' → calendar",
         is_calendar_query("ปฏิทินการศึกษาดูที่ไหน"),
         True,
     )
-    # ปฏิทิน: topic + when → จับ
     check("'ลงทะเบียนวันไหน' → calendar", is_calendar_query("ลงทะเบียนวันไหน"), True)
     check(
         "'สอบปลายภาคเมื่อไหร่' → calendar",
         is_calendar_query("สอบปลายภาคเมื่อไหร่"),
         True,
     )
-    # ปฏิทิน: topic อย่างเดียว ไม่มีคำถามเวลา → ต้องปล่อยไป RAG
     check(
         "'ลงทะเบียนยังไง' → ไม่ใช่ calendar", is_calendar_query("ลงทะเบียนยังไง"), False
     )
@@ -277,18 +225,7 @@ def test_redirects():
     )
 
 
-# ═══════════════════════════════════════════════════════════
-# 6. ค่าเกณฑ์ต้องมาจาก rules.yaml เท่านั้น (single source of truth)
-# ═══════════════════════════════════════════════════════════
-
-
 def test_no_hardcoded_thresholds():
-    """ตรวจว่าแก้ค่าใน rules.yaml แล้วผลลัพธ์เปลี่ยนตามจริง
-
-    ถ้าเคสไหนไม่ผ่าน = ค่านั้นถูก hardcode ไว้ในโค้ด ไม่ได้อ่านจาก yaml
-    (ตอนเขียนไฟล์นี้ พบว่าเกณฑ์ 'รอพินิจ 2.00' ถูก hardcode ใน rules.py
-     บรรทัด probation_threshold = 2.00 ทั้งที่มีการอ่าน yaml มาแล้วแต่ไม่ได้ใช้)
-    """
     print("\n── 6. ค่าเกณฑ์อ่านจาก rules.yaml จริงไหม ──")
     rules = load_rules()
 
@@ -314,7 +251,7 @@ def test_no_hardcoded_thresholds():
     if original_p is None:
         _failed.append("rules.yaml ยังไม่มี probation.threshold")
         print(
-            "  ❌ rules.yaml ยังไม่มี academic_status.definitions.probation.threshold"
+            "   rules.yaml ยังไม่มี academic_status.definitions.probation.threshold"
         )
     else:
         try:
@@ -341,7 +278,7 @@ def test_no_hardcoded_thresholds():
 
 
 def main():
-    print("🧪 ทดสอบ Rule Engine ด้วย Boundary Value Analysis")
+    print(" ทดสอบ Rule Engine ด้วย Boundary Value Analysis")
     print("=" * 62)
 
     test_honor()
@@ -355,11 +292,11 @@ def main():
     print("\n" + "=" * 62)
     print(f"ผลรวม: ผ่าน {_passed}/{total}")
     if _failed:
-        print(f"\n❌ ไม่ผ่าน {len(_failed)} เคส:")
+        print(f"\n ไม่ผ่าน {len(_failed)} เคส:")
         for name in _failed:
             print(f"   - {name}")
         sys.exit(1)
-    print("✅ ผ่านทั้งหมด")
+    print("ผ่านทั้งหมด")
 
 
 if __name__ == "__main__":
