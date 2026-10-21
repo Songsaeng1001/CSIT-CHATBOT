@@ -1,0 +1,78 @@
+{
+  "answerable": {
+    "A": {
+      "faithfulness": null,
+      "answer_relevance": {
+        "mean": 0.84,
+        "n": 6
+      },
+      "context_relevance": null
+    },
+    "B": {
+      "faithfulness": {
+        "mean": 0.944,
+        "n": 3
+      },
+      "answer_relevance": {
+        "mean": 0.886,
+        "n": 3
+      },
+      "context_relevance": {
+        "mean": 0.128,
+        "n": 3
+      }
+    },
+    "C": {
+      "faithfulness": {
+        "mean": 0.917,
+        "n": 6
+      },
+      "answer_relevance": {
+        "mean": 0.809,
+        "n": 6
+      },
+      "context_relevance": {
+        "mean": 0.193,
+        "n": 6
+      }
+    }
+  },
+  "all": {
+    "A": {
+      "faithfulness": null,
+      "answer_relevance": {
+        "mean": 0.873,
+        "n": 9
+      },
+      "context_relevance": null
+    },
+    "B": {
+      "faithfulness": {
+        "mean": 0.851,
+        "n": 4
+      },
+      "answer_relevance": {
+        "mean": 0.855,
+        "n": 4
+      },
+      "context_relevance": {
+        "mean": 0.096,
+        "n": 4
+      }
+    },
+    "C": {
+      "faithfulness": {
+        "mean": 0.821,
+        "n": 8
+      },
+      "answer_relevance": {
+        "mean": 0.816,
+        "n": 8
+      },
+      "context_relevance": {
+        "mean": 0.145,
+        "n": 8
+      }
+    }
+  }
+}
